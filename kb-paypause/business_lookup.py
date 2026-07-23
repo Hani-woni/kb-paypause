@@ -497,20 +497,6 @@ def search(
     ].copy()
 
     # 검색어가 후보 이름보다 긴 경우를 고려한 역방향 검색
-    if candidates.empty:
-        reverse_mask = (
-            business_df["_normalized_name"]
-            .apply(
-                lambda candidate_name: (
-                    bool(candidate_name)
-                    and candidate_name in normalized_name
-                )
-            )
-        )
-
-        candidates = business_df[
-            reverse_mask
-        ].copy()
 
     if candidates.empty:
         return []
@@ -820,6 +806,37 @@ def analyze_business(
             data_as_of="2026-07-20",
         )
     )
+    
+  
+    # 이미 폐업한 업체는 미래 폐업위험 예측 대상에서 제외
+    if status == "폐업":
+        return {
+            "business_id": str(business_id),
+            "status": status,
+            "open_date": open_date,
+            "operation_months": operation_months,
+            "local_active_count": region_stats[
+                "local_active_count"
+            ],
+            "local_closed_count": region_stats[
+                "local_closed_count"
+            ],
+            "historical_closure_ratio": region_stats[
+                "historical_closure_ratio"
+            ],
+            "same_address_history_count": 0,
+            "relative_risk_percentile": None,
+            "risk_level": "check_required",
+            "risk_factors": [
+                "현재 인허가 데이터상 폐업 상태로 확인됩니다."
+            ],
+            "model_version": "business-v2",
+            "data_as_of": "2026-07-20",
+            "disclaimer": (
+                "이미 폐업한 업체는 미래 폐업 상대위험 분석 대상에서 "
+                "제외합니다."
+            ),
+        }
 
     model_features = get_model_features(
         business_id
