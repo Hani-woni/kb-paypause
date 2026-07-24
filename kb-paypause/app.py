@@ -244,7 +244,8 @@ def render_step_content(step: int):
             st.number_input("월결제(원)", value=d.get("monthly_price", 0), step=10000, key="f_monthly_price")
         st.number_input("위약금률(%)", value=d.get("penalty_rate", 0.0), step=1.0, key="f_penalty_rate")
         st.selectbox("결제수단", ["bank_transfer", "cash", "card_lump_sum", "card_installment", "monthly"],
-                     index=0, key="f_payment_method")
+                     index=0, key="f_payment_method",
+                     format_func=lambda m: payment_compare.METHOD_LABELS.get(m, m))
 
     elif step == 2:
         r = run_analysis()
