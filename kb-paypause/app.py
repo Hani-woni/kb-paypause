@@ -133,15 +133,10 @@ def ocr_stub(_file):
     }
 
 
-def analyze_stub(contract_data):
+def analyze_stub(contract_data, business_id=None, used_months=1):
     """C 실제 함수(business_lookup/payment_compare/refund_calculator/final_fusion) 연결.
     contract_result는 B 완성 전까지 골든패스 stub 값 사용."""
-    business_result = None
-    candidates = business_lookup.search(
-        contract_data.get("business_name", ""), contract_data.get("business_address")
-    )
-    if candidates:
-        business_result = business_lookup.analyze_business(candidates[0]["business_id"])
+    business_result = business_lookup.analyze_business(business_id) if business_id else None
 
     contract_result = {
         "contract_data": contract_data,
@@ -152,11 +147,19 @@ def analyze_stub(contract_data):
         }],
     }  # TODO: B 완성되면 ocr_parser → contract_rules.analyze() 결과로 교체
 
-    usage = {"used_months": 1}  # TODO: 사용자 입력값으로 교체
+    usage = {"used_months": used_months}
 
     refund_result = refund_calculator.calculate(contract_data, usage)
     payment_result = payment_compare.compare(contract_data)
     return final_fusion.fuse(business_result, contract_result, refund_result, payment_result)
+
+
+def run_analysis():
+    return analyze_stub(
+        st.session_state.contract_data,
+        business_id=st.session_state.get("selected_business_id"),
+        used_months=st.session_state.get("f_used_months", 1),
+    )
 
 
 def render_topbar(step: int):
@@ -191,6 +194,7 @@ def render_step_content(step: int):
             with st.spinner("OCR 분석 중..."):
                 time.sleep(0.6)
             st.session_state.contract_data = ocr_stub(file)  # TODO: B 완성되면 ocr_parser.extract(file) 로 교체
+            st.session_state.selected_business_id = None
             st.session_state.step = 1
             st.rerun()
 
@@ -199,6 +203,25 @@ def render_step_content(step: int):
         st.caption("OCR로 추출된 값이에요. 틀린 부분은 직접 고쳐주세요.")
         d = st.session_state.contract_data
         st.text_input("업체명", d.get("business_name", ""), key="f_business_name")
+
+        candidates = business_lookup.search(st.session_state.f_business_name, d.get("business_address"))
+        if not candidates:
+            st.session_state.selected_business_id = None
+            st.caption("⚠️ 검색된 업체가 없어요. 업체명을 다시 확인해주세요.")
+        elif len(candidates) == 1:
+            only = candidates[0]
+            st.session_state.selected_business_id = only["business_id"]
+            st.caption(f"✓ {only['business_name']} · {only.get('road_address') or '주소 정보 없음'}")
+        else:
+            st.caption(f"동명의 업체가 {len(candidates)}건 검색됐어요. 맞는 곳을 골라주세요.")
+            labels = [f"{c['business_name']} · {c.get('road_address') or '주소 정보 없음'}" for c in candidates]
+            choice_idx = st.radio(
+                "업체 선택", range(len(candidates)), format_func=lambda i: labels[i],
+                key="f_business_choice", label_visibility="collapsed",
+            )
+            st.session_state.selected_business_id = candidates[choice_idx]["business_id"]
+
+        st.number_input("지금까지 사용한 기간 (개월)", value=1, min_value=0, step=1, key="f_used_months")
 
         months = d.get("contract_months") or 0
         default_start = datetime.date.today()
@@ -224,7 +247,7 @@ def render_step_content(step: int):
                      index=0, key="f_payment_method")
 
     elif step == 2:
-        r = analyze_stub(st.session_state.contract_data)  # TODO: A·B·C 완성되면 실제 함수 호출로 교체
+        r = run_analysis()
         st.session_state.analyzed = r
         business = r["business"]
         score_color = SCORE_COLOR[r["level"]]
@@ -318,7 +341,7 @@ def render_step_content(step: int):
             """, unsafe_allow_html=True)
 
     elif step == 3:
-        r = st.session_state.get("analyzed") or analyze_stub(st.session_state.contract_data)
+        r = st.session_state.get("analyzed") or run_analysis()
         risks = r["contract_risks"]
         render_section_header("⚠️", "계약 위험 항목", "#FDEBEC")
 
@@ -373,7 +396,7 @@ def render_step_content(step: int):
                 """, unsafe_allow_html=True)
 
     elif step == 4:
-        r = st.session_state.get("analyzed") or analyze_stub(st.session_state.contract_data)
+        r = st.session_state.get("analyzed") or run_analysis()
         rf, options = r["refund"], r["payment_options"]
         render_section_header("💰", "환급 정보", "#FFF6DB")
         st.markdown(f"""
@@ -421,7 +444,7 @@ def render_step_content(step: int):
             """, unsafe_allow_html=True)
 
     elif step == 5:
-        r = st.session_state.get("analyzed") or analyze_stub(st.session_state.contract_data)
+        r = st.session_state.get("analyzed") or run_analysis()
         st.markdown(
             '<p style="font-size:12.5px;color:#8A8A8A;line-height:1.6;margin-bottom:18px;">'
             '판정 결과를 바탕으로 정리한 문구예요. 업체와 통화하거나 방문할 때 그대로 활용해보세요.</p>',
@@ -465,7 +488,7 @@ def render_step_content(step: int):
             )
 
     elif step == LAST_STEP:
-        r = st.session_state.get("analyzed") or analyze_stub(st.session_state.contract_data)
+        r = st.session_state.get("analyzed") or run_analysis()
         badge_content = (
             f'<img src="data:image/png;base64,{KB_LOGO_B64}" style="width:38px;height:38px;object-fit:contain;">'
             if KB_LOGO_B64 else "✅"
@@ -519,6 +542,8 @@ def render_nav(step: int):
             if st.button("처음으로", type="primary", use_container_width=True):
                 st.session_state.step = 0
                 st.session_state.contract_data = {}
+                st.session_state.selected_business_id = None
+                st.session_state.analyzed = None
                 st.rerun()
         else:
             if st.button("다음", type="primary", use_container_width=True):
