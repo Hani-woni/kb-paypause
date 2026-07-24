@@ -34,6 +34,10 @@ SEVERITY_STYLE = {
     "low": {"label": "낮음", "color": "#3D8B3D", "bg": "#E8F5E9"},
 }
 RISK_LEVEL_LABEL = {"low": "낮음", "normal": "보통", "caution": "주의", "check_required": "확인 필요"}
+PAYMENT_METHOD_FORM_LABELS = {
+    "cash": "현금", "bank_transfer": "계좌이체", "card_lump_sum": "카드 일시불",
+    "card_installment": "카드 할부", "monthly": "월 단위 결제",
+}
 
 
 def _won(v):
@@ -239,13 +243,15 @@ def render_step_content(step: int):
         with c1:
             st.number_input("실제 결제금액(원)", value=d.get("contract_price", 0), step=10000, key="f_contract_price")
             st.number_input("정상가격(원)", value=d.get("normal_price", 0), step=10000, key="f_normal_price")
+            st.number_input("할부 개월수 (해당 시)", value=d.get("installment_months") or 0, min_value=0, step=1,
+                             key="f_installment_months")
         with c2:
             st.number_input("현금가격(원)", value=d.get("cash_price", 0), step=10000, key="f_cash_price")
             st.number_input("월결제(원)", value=d.get("monthly_price", 0), step=10000, key="f_monthly_price")
         st.number_input("위약금률(%)", value=d.get("penalty_rate", 0.0), step=1.0, key="f_penalty_rate")
         st.selectbox("결제수단", ["bank_transfer", "cash", "card_lump_sum", "card_installment", "monthly"],
                      index=0, key="f_payment_method",
-                     format_func=lambda m: payment_compare.METHOD_LABELS.get(m, m))
+                     format_func=lambda m: PAYMENT_METHOD_FORM_LABELS.get(m, m))
 
     elif step == 2:
         r = run_analysis()
@@ -534,6 +540,7 @@ def render_nav(step: int):
                     "contract_months": contract_months,
                     "cash_price": st.session_state.f_cash_price,
                     "monthly_price": st.session_state.f_monthly_price,
+                    "installment_months": st.session_state.f_installment_months or None,
                     "penalty_rate": st.session_state.f_penalty_rate,
                     "payment_method": st.session_state.f_payment_method,
                 })
