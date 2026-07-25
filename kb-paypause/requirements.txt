@@ -5,3 +5,6 @@ pandas
 scikit-learn
 python-dotenv
 catboost
+pymupdf
+easyocr
+pillow
