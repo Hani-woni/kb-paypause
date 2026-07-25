@@ -1,1 +1,29 @@
-{}
+{
+  "version": "1.0",
+  "category": "gym",
+  "legal_basis": {
+    "title": "계속거래 등의 해지·해제에 따른 위약금 및 대금의 환급에 관한 산정기준",
+    "notice": "공정거래위원회고시 제2019-9호",
+    "related_law": "방문판매 등에 관한 법률 제32조 제4항"
+  },
+  "penalty_cap_by_category": {
+    "default": 0.1,
+    "gym": 0.1,
+    "pt": 0.1,
+    "bundle": 0.1
+  },
+  "reference_refund_base": "paid_price",
+  "allowed_refund_bases": [
+    "paid_price",
+    "normal_price",
+    "unknown"
+  ],
+  "rules": {
+    "penalty_base": "contract_price",
+    "usage_deduction_reference_base": "contract_price",
+    "normal_price_deduction_is_risk": true,
+    "non_refundable_clause_is_risk": true,
+    "missing_closure_refund_clause_is_risk": false
+  },
+  "disclaimer": "공식 기준을 참고해 산출한 결과이며 개별 계약에 대한 법률적 확정 판단은 아닙니다."
+}

@@ -1,1 +1,161 @@
-{}
+{
+  "version": "1.0",
+  "scope": [
+    "gym",
+    "fitness",
+    "pt",
+    "pilates"
+  ],
+  "source_policy": {
+    "official_sources_only": true,
+    "legal_conclusion_prohibited": true,
+    "evidence_required": true
+  },
+  "rules": [
+    {
+      "code": "NORMAL_PRICE_DEDUCTION",
+      "severity": "high",
+      "rule_type": "legal_risk",
+      "title": "정상가 기준 공제 조항",
+      "description": "중도해지 환급액을 실제 계약대금이 아닌 정상가·정가·할인 전 가격을 기준으로 계산하는 조항입니다.",
+      "keywords": [
+        "정상가 기준",
+        "정상가격 기준",
+        "정가 기준",
+        "할인 전 가격 기준",
+        "월 정상가",
+        "1회 정상가"
+      ],
+      "reference_documents": [
+        "case_normal_price_deduction_2025.pdf",
+        "case_contract_not_provided_2020.pdf"
+      ],
+      "reference_summary": "정상가 기준 공제 조항의 효력이 인정되지 않았고 실제 총 계약대금을 기준으로 이용대금과 위약금을 산정한 사례",
+      "output_limit": "정상가라는 단어만으로 판정하지 않고 중도해지 또는 환급 계산에 적용되는 경우만 탐지합니다."
+    },
+    {
+      "code": "NON_REFUNDABLE",
+      "severity": "high",
+      "rule_type": "legal_risk",
+      "title": "환불 전면 제한 조항",
+      "description": "할인·이벤트·프로모션 상품이라는 이유로 중도해지와 환급을 전면 제한하는 조항입니다.",
+      "keywords": [
+        "환불 불가",
+        "환급 불가",
+        "중도해지 불가",
+        "중도 해지 불가",
+        "이벤트 상품 환불 불가",
+        "할인 상품 환불 불가",
+        "프로모션 상품 환불 불가",
+        "어떠한 경우에도 환불되지"
+      ],
+      "reference_documents": [
+        "case_pt_gym_bundle_2025.pdf"
+      ],
+      "reference_summary": "할인된 가격으로 체결했다는 이유만으로 환불을 제한한 약관의 효력이 인정되지 않은 사례",
+      "output_limit": "이미 제공된 이용분이나 적법한 공제까지 금지된다고 해석하지 않습니다."
+    },
+    {
+      "code": "PENALTY_EXCESS",
+      "severity": "high",
+      "rule_type": "numeric_risk",
+      "title": "위약금 상한 초과 조항",
+      "description": "소비자 사정으로 중도해지할 때 총 계약대금의 10%를 초과하는 위약금을 정한 조항입니다.",
+      "keywords": [
+        "위약금",
+        "해약금",
+        "해지 수수료",
+        "중도해지 수수료"
+      ],
+      "threshold": {
+        "field": "penalty_rate",
+        "operator": "greater_than",
+        "value": 10.0,
+        "unit": "percent"
+        },
+      "reference_documents": [
+        "continuous_transaction_refund_standard_2019-9.pdf",
+        "consumer_dispute_resolution_annex2_2025-14.pdf",
+        "case_normal_price_deduction_2025.pdf"
+      ],
+      "reference_summary": "헬스·피트니스업 및 요가·필라테스업의 위약금 기준은 총 계약대금의 10%이며 공식 사례에서도 총 계약대금의 10%를 적용함",
+      "output_limit": "사업자 귀책 여부는 자동 확정하지 않으며 계약서에 기재된 비율만 점검합니다."
+    },
+    {
+      "code": "BUSINESS_LIABILITY_EXEMPTION",
+      "severity": "high",
+      "rule_type": "legal_risk",
+      "title": "사업자 책임 전면 면제 조항",
+      "description": "시설의 설치·관리상 문제나 사업자 귀책으로 발생한 피해까지 사업자의 책임을 전면 면제할 수 있는 조항입니다.",
+      "keywords": [
+        "사업자는 일절 책임지지",
+        "사업자는 책임지지 않습니다",
+        "모든 사고는 회원 책임",
+        "시설 사고에 대한 책임 없음",
+        "사업자에게 책임을 묻지",
+        "손해배상 책임을 부담하지"
+      ],
+      "reference_documents": [
+        "case_business_liability_gym_2024.pdf"
+      ],
+      "reference_summary": "헬스장 사업자에게 시설물을 안전하게 유지·관리할 책임이 있으며 이용자 과실 가능성만으로 전면 면책되지는 않는다고 판단한 사례",
+      "output_limit": "불가항력 또는 이용자의 고의·과실에 따른 책임 경감 가능성은 위험으로 탐지하지 않습니다."
+    },
+    {
+      "code": "CONTRACT_TERMS_NOT_PROVIDED",
+      "severity": "medium",
+      "rule_type": "explicit_statement_check",
+      "title": "계약서 또는 환급규정 미교부",
+      "description": "계약서나 환급규정을 받지 못했거나 구두로만 안내받았다는 내용이 명시된 경우입니다.",
+      "keywords": [
+        "계약서를 받지 못",
+        "계약서 미교부",
+        "계약서 교부하지",
+        "환급 규정을 받지 못",
+        "환불 규정을 받지 못",
+        "구두로만 설명",
+        "매장에만 게시"
+      ],
+      "reference_documents": [
+        "case_contract_not_provided_2020.pdf"
+      ],
+      "reference_summary": "계약서를 교부하지 않은 상태에서 정상가 환급규정을 매장에 게시한 것만으로는 충분한 설명으로 보기 어렵다고 판단한 사례",
+      "output_limit": "업로드된 계약서 일부가 잘렸다는 이유만으로 실제 계약서 미교부를 자동 판정하지 않습니다."
+    },
+    {
+      "code": "SESSION_DEDUCTION_CHECK",
+      "severity": "medium",
+      "rule_type": "service_check",
+      "title": "PT 횟수 차감 기준 확인 필요",
+      "description": "계약횟수, 실제 이용횟수, 서비스 횟수 또는 차감 기준이 불명확할 수 있는 조항입니다.",
+      "keywords": [
+        "미사용 횟수 자동 차감",
+        "미사용 회차 자동 소진",
+        "잔여 횟수 자동 소멸",
+        "기간 만료 시 잔여 횟수 소멸",
+        "서비스 횟수 포함",
+        "당일 취소 시 1회 차감",
+        "노쇼 시 1회 차감"
+      ],
+      "reference_documents": [
+        "case_pt_trainer_absence_2024.pdf"
+      ],
+      "reference_summary": "PT 계약횟수, 실제 이용횟수와 서비스 횟수를 구분해 잔여 횟수와 환급액을 판단한 사례",
+      "output_limit": "노쇼나 당일취소 차감 조항이 항상 무효라고 단정하지 않고 차감 기준 확인을 권고합니다."
+    }
+  ],
+  "deferred_rules": [
+    {
+      "code": "CLOSURE_PROTECTION_MISSING",
+      "reason": "체력단련장 표준약관의 휴업·폐업 관련 원문 조항을 직접 확인한 뒤 구현"
+    },
+    {
+      "code": "AUTO_RENEWAL",
+      "reason": "현재 확보한 체육시설업 공식자료와 사례에서 직접적인 판단 근거가 충분하지 않아 보류"
+    },
+    {
+      "code": "BUNDLE_PRICE_UNCLEAR",
+      "reason": "PT와 헬스 항목별 가격을 저장할 공통 contract_data 필드가 없어 팀 합의 없이 구현할 수 없으므로 보류"
+    }
+  ]
+}
