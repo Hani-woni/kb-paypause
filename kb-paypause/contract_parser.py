@@ -189,7 +189,7 @@ def _extract_penalty_rate(text: str) -> Optional[float]:
         ocr_error_patterns,
     )
 
-    return _to_float(ocr_value)Add-Content .\requirements.txt "pytest"
+    return _to_float(ocr_value)
 
 
 def _extract_installment_months(text: str) -> Optional[int]:
