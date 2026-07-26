@@ -186,15 +186,22 @@ def _analyze_normal_price_deduction(
     if evidence:
         return _make_result(rule, evidence, keyword)
 
-    # parser가 원문을 바탕으로 normal_price로 판정했지만
-    # 문장 분리로 증거문장을 찾지 못한 경우
+    # parser가 환급 공제 기준을 normal_price로 판정했지만
+    # 금액 등이 중간에 있어 설정 키워드가 그대로 일치하지 않는 경우
     if (
         contract_data.get("refund_base") == "normal_price"
         and contract_data.get("raw_text")
     ):
+        normal_price_keywords = [
+            "정상가",
+            "정상가격",
+            "정가",
+            "할인 전 가격",
+        ]
+
         evidence, keyword = _find_keyword_evidence(
             clauses,
-            keywords,
+            normal_price_keywords,
         )
 
         if evidence:

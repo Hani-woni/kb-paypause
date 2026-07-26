@@ -158,14 +158,38 @@ def _extract_total_sessions(text: str) -> Optional[int]:
 def _extract_penalty_rate(text: str) -> Optional[float]:
     """위약금·해약금·중도해지 수수료의 퍼센트를 추출한다."""
     patterns = [
+        # 일반 문장
+        # 예: 위약금 10%, 위약금은 10%, 위약금: 총 계약대금의 10%
         r"(?:위약금|해약금|중도\s*해지\s*수수료|해지\s*수수료)"
-        r"\s*[:：]?\s*(?:총\s*계약\s*대금의\s*)?(\d+(?:\.\d+)?)\s*%",
+        r"\s*(?:은|는|이|가)?\s*[:：]?\s*"
+        r"(?:총\s*계약\s*대금(?:의)?\s*)?"
+        r"(\d+(?:\.\d+)?)\s*%",
+
+        # 예: 총 계약대금의 10%를 위약금으로 한다
         r"(?:총\s*계약\s*대금|총\s*이용\s*금액)의\s*"
-        r"(\d+(?:\.\d+)?)\s*%\s*(?:를\s*)?(?:위약금|해약금)",
+        r"(\d+(?:\.\d+)?)\s*%\s*(?:를\s*)?"
+        r"(?:위약금|해약금)",
     ]
 
     value = _extract_first_group(text, patterns)
-    return _to_float(value)
+
+    if value is not None:
+        return _to_float(value)
+
+    # EasyOCR에서 '10%로'가 '109로' 또는 '1096로'로
+    # 인식되는 경우에 한해 위약금 문맥에서만 보정한다.
+    ocr_error_patterns = [
+        r"(?:위약금|해약금|중도\s*해지\s*수수료|해지\s*수수료)"
+        r"\s*(?:은|는|이|가)?\s*[:：]?\s*"
+        r"(\d{1,2})(?:9|96)\s*로",
+    ]
+
+    ocr_value = _extract_first_group(
+        text,
+        ocr_error_patterns,
+    )
+
+    return _to_float(ocr_value)Add-Content .\requirements.txt "pytest"
 
 
 def _extract_installment_months(text: str) -> Optional[int]:
@@ -186,9 +210,19 @@ def _extract_installment_months(text: str) -> Optional[int]:
 def _detect_refund_base(text: str) -> str:
     """환급 시 이용료 공제 기준을 판정한다."""
     normal_price_patterns = [
-        r"정상가(?:격)?\s*(?:기준|으로)",
-        r"정가\s*(?:기준|로)",
-        r"할인\s*전\s*가격\s*(?:기준|으로)",
+        # 예: 정상가 기준, 정상가로, 정상가 1,800,000원을 기준으로
+        r"정상가(?:격)?\s*"
+        r"(?:\d[\d,]*(?:\.\d+)?\s*원)?\s*"
+        r"(?:을|를)?\s*(?:기준(?:으로)?|으로|로)",
+
+        r"정가\s*"
+        r"(?:\d[\d,]*(?:\.\d+)?\s*원)?\s*"
+        r"(?:을|를)?\s*(?:기준(?:으로)?|으로|로)",
+
+        r"할인\s*전\s*가격\s*"
+        r"(?:\d[\d,]*(?:\.\d+)?\s*원)?\s*"
+        r"(?:을|를)?\s*(?:기준(?:으로)?|으로|로)",
+
         r"(?:월|1회)\s*정상가",
     ]
 
