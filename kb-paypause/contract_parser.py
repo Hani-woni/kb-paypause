@@ -181,6 +181,7 @@ def _extract_penalty_rate(text: str) -> Optional[float]:
     ocr_error_patterns = [
         r"(?:위약금|해약금|중도\s*해지\s*수수료|해지\s*수수료)"
         r"\s*(?:은|는|이|가)?\s*[:：]?\s*"
+        r"(?:총\s*계약\s*대금(?:의)?\s*)?"
         r"(\d{1,2})(?:9|96)\s*로",
     ]
 

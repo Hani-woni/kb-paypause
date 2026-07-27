@@ -37,7 +37,7 @@ def fuse(business_result: dict | None,
         for o in payment_result.get("options", [])
     ]
 
-    suggestions = [f"{r['title']} 조항의 수정을 요청하세요." for r in high_risks]
+    suggestions = [f"{r['title']}의 수정을 요청하세요." for r in high_risks]
 
     questions = []
     if contract_data.get("closure_refund_clause") is False:
