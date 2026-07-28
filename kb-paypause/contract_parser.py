@@ -117,11 +117,11 @@ def _extract_money(text: str, labels: list[str]) -> Optional[int]:
 def _extract_business_name(text: str) -> Optional[str]:
     """업체명 또는 사업자명을 추출한다."""
     patterns = [
-        r"(?:업체명|상호명|상호|사업자명|체육시설명|센터명)\s*[:：]\s*([^\n]+)",
+        r"(?:업체명|상호명|상호|사업자명|체육시설명|센터명)"
+        r"\s*[:：]?\s*([^\n]+)",
     ]
 
     return _extract_first_group(text, patterns)
-
 
 def _extract_business_address(text: str) -> Optional[str]:
     """업체 주소를 추출한다."""
@@ -166,8 +166,9 @@ def _extract_penalty_rate(text: str) -> Optional[float]:
         r"(\d+(?:\.\d+)?)\s*%",
 
         # 예: 총 계약대금의 10%를 위약금으로 한다
-        r"(?:총\s*계약\s*대금|총\s*이용\s*금액)의\s*"
-        r"(\d+(?:\.\d+)?)\s*%\s*(?:를\s*)?"
+        r"(?:총\s*계약\s*(?:대금|금액)|총\s*이용\s*금액)의\s*"
+        r"(\d+(?:\.\d+)?)\s*%\s*"
+        r"(?:(?:에\s*)?해당하는\s*|(?:를\s*)?)"
         r"(?:위약금|해약금)",
     ]
 
@@ -249,6 +250,11 @@ def _detect_non_refundable(text: str) -> Optional[bool]:
         r"중도\s*해지\s*(?:는\s*)?불가",
         r"어떠한\s*경우에도\s*환불(?:되지\s*않|하지\s*않)",
         r"(?:할인|이벤트|프로모션)\s*상품.*환불\s*불가",
+        r"(?:원칙적으로\s*)?환불하지\s*않",
+        r"(?:원칙적으로\s*)?환급하지\s*않",
+        r"환불할\s*수\s*없",
+        r"환급할\s*수\s*없",
+        r"환불\s*대상에서\s*제외",
     ]
 
     if any(re.search(pattern, text, re.IGNORECASE) for pattern in risky_patterns):
@@ -360,6 +366,11 @@ def parse(ocr_text: str) -> dict:
                 "계약금액",
                 "총 이용금액",
                 "이용대금",
+                "총 결제금액",
+                "결제금액",
+                "최종 결제금액",
+                "합계",
+                "총액",
             ],
         ),
         "cash_price": _extract_money(
@@ -376,8 +387,11 @@ def parse(ocr_text: str) -> dict:
             [
                 "정상가",
                 "정상가격",
+                "정상 판매가",
+                "정상판매가",
                 "정가",
                 "할인 전 가격",
+                "할인전 가격",
             ],
         ),
         "monthly_price": _extract_money(

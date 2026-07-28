@@ -122,7 +122,24 @@ def test_invalid_input_returns_safe_values():
     assert parse(None)["contract_type"] == "unknown"
     assert analyze(None) == []
 
+def test_realistic_contract_wording():
+    text = """
+사업자명 핏맥스짐 성수점
+총 결제금액 1,200,000원
+정상 판매가 1,800,000원
+계약 기간 12개월
+총 계약금액의 10%에 해당하는 위약금을 공제한다.
+이벤트 상품은 원칙적으로 환불하지 않는다.
+"""
 
+    contract_data = parse(text)
+
+    assert contract_data["business_name"] == "핏맥스짐 성수점"
+    assert contract_data["contract_price"] == 1200000
+    assert contract_data["normal_price"] == 1800000
+    assert contract_data["contract_months"] == 12
+    assert contract_data["penalty_rate"] == 10.0
+    assert contract_data["non_refundable"] is True
 if __name__ == "__main__":
     test_period_contract_and_core_risks()
     test_session_contract_and_check_rules()
