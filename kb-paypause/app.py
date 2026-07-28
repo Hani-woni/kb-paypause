@@ -431,10 +431,11 @@ def render_step_content(step: int):
 
             for i, risk in enumerate(risks, start=1):
                 sv = SEVERITY_STYLE[risk["severity"]]
+                score_deduction = {"high": 30, "medium": 10}.get(risk["severity"])
                 score_note = (
                     f'<div style="font-size:11px;color:{sv["color"]};margin-top:8px;font-weight:700;">'
-                    f'ⓘ 이 조항 때문에 위험 점수 −30점</div>'
-                    if risk["severity"] == "high" else ""
+                    f'ⓘ 이 조항 때문에 위험 점수 −{score_deduction}점</div>'
+                    if score_deduction else ""
                 )
                 index_tag = f'위험 {i} · ' if len(risks) > 1 else ""
                 st.markdown(f"""
