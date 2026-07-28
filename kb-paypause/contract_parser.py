@@ -109,6 +109,40 @@ def _extract_money(text: str, labels: list[str]) -> Optional[int]:
     value = _extract_first_group(text, patterns)
     return _to_int(value)
 
+def _extract_normal_price(text: str) -> Optional[int]:
+    """정상가 또는 표의 정상 판매가 합계를 추출한다."""
+
+    # 일반 문장형
+    normal_price = _extract_money(
+        text,
+        [
+            "정상가",
+            "정상가격",
+            "정상 판매가",
+            "정상판매가",
+            "정가",
+            "할인 전 가격",
+            "할인전 가격",
+        ],
+    )
+
+    if normal_price is not None:
+        return normal_price
+
+    # 표 형식:
+    # 정상 판매가 | 할인액 | 실제 결제액
+    # ...
+    # 합계 | 3,200,000원 | 2,000,000원 | 1,200,000원
+    table_patterns = [
+        r"정상\s*판매가"
+        r".{0,100}?할인액"
+        r".{0,100}?실제\s*결제액"
+        r".{0,1000}?합계\s*"
+        r"([\d,]+)\s*원",
+    ]
+
+    value = _extract_first_group(text, table_patterns)
+    return _to_int(value)
 
 # ---------------------------------------------------------------------
 # 기본 계약 정보
@@ -135,8 +169,14 @@ def _extract_business_address(text: str) -> Optional[str]:
 def _extract_contract_months(text: str) -> Optional[int]:
     """계약기간을 개월 단위로 추출한다."""
     patterns = [
-        r"(?:계약\s*기간|이용\s*기간|회원권\s*기간)\s*[:：]?\s*(\d+)\s*개?월",
+        r"(?:계약\s*기간|이용\s*기간|회원권\s*기간)"
+        r"\s*[:：]?\s*(\d+)\s*개?월",
+
         r"(\d+)\s*개?월\s*(?:이용권|회원권|계약)",
+
+        # 예: 헬스 12개월 + PT 20회
+        r"(?:헬스|피트니스|회원권|이용권)"
+        r"\s*(\d+)\s*개?월",
     ]
 
     value = _extract_first_group(text, patterns)
@@ -226,6 +266,11 @@ def _detect_refund_base(text: str) -> str:
         r"(?:을|를)?\s*(?:기준(?:으로)?|으로|로)",
 
         r"(?:월|1회)\s*정상가",
+
+        r"할인\s*전\s*정상가(?:인)?\s*(?:월|1\s*회)?\s*"
+        r"\d[\d,]*\s*원.{0,30}?기준",
+
+        r"정상\s*판매가.{0,120}?(?:기준|공제)",
     ]
 
     paid_price_patterns = [
@@ -278,25 +323,54 @@ def _detect_closure_refund_clause(text: str) -> Optional[bool]:
     """폐업·휴업·영업중단 시 환급 보호조항을 탐지한다.
 
     문구가 없다는 이유만으로 False로 판단하지 않는다.
+    서로 멀리 떨어진 문장이 연결되지 않도록 탐지 범위를 제한한다.
     """
-    protective_patterns = [
-        r"(?:폐업|휴업|영업\s*중단).*잔여.*환급",
-        r"(?:폐업|휴업|영업\s*중단).*미사용.*환급",
-        r"(?:폐업|휴업).*계약\s*해지",
-        r"(?:폐업|휴업).*대체\s*시설",
-    ]
 
     risky_patterns = [
-        r"(?:폐업|휴업|영업\s*중단).*환불\s*불가",
-        r"(?:폐업|휴업|영업\s*중단).*환급\s*불가",
-        r"(?:폐업|휴업).*책임지지",
+        # 예: 폐업 시 환불 불가
+        r"(?:폐업|휴업|영업\s*중단).{0,120}?"
+        r"(?:환불|환급)\s*(?:은\s*)?불가",
+
+        # 예: 폐업 시 현금 환불을 요구할 수 없다
+        r"(?:폐업|휴업|영업\s*중단|지점\s*이전).{0,160}?"
+        r"(?:현금\s*)?(?:환불|환급).{0,30}?"
+        r"(?:요구할\s*수\s*없|받을\s*수\s*없|하지\s*않)",
+
+        # 예: 폐업에 대해 책임지지 않는다
+        r"(?:폐업|휴업|영업\s*중단).{0,120}?"
+        r"책임지지\s*않",
     ]
 
-    if any(re.search(pattern, text, re.IGNORECASE) for pattern in protective_patterns):
-        return True
+    protective_patterns = [
+        # 예: 폐업 시 잔여 이용료를 환급한다
+        r"(?:폐업|휴업|영업\s*중단).{0,120}?"
+        r"잔여.{0,40}?(?:환불|환급)",
 
-    if any(re.search(pattern, text, re.IGNORECASE) for pattern in risky_patterns):
+        # 예: 폐업 시 미사용 금액을 환급한다
+        r"(?:폐업|휴업|영업\s*중단).{0,120}?"
+        r"미사용.{0,40}?(?:환불|환급)",
+
+        # 예: 폐업 시 계약을 해지하고 잔액을 환급한다
+        r"(?:폐업|휴업|영업\s*중단).{0,120}?"
+        r"계약\s*해지.{0,80}?(?:환불|환급)",
+
+        # 대체시설과 환급 선택권이 함께 있는 경우만 보호로 판단
+        r"(?:폐업|휴업|영업\s*중단).{0,160}?"
+        r"대체\s*시설.{0,100}?(?:환불|환급)\s*(?:선택|가능)",
+    ]
+
+    # 불리한 표현을 먼저 확인한다.
+    if any(
+        re.search(pattern, text, re.IGNORECASE)
+        for pattern in risky_patterns
+    ):
         return False
+
+    if any(
+        re.search(pattern, text, re.IGNORECASE)
+        for pattern in protective_patterns
+    ):
+        return True
 
     return None
 
@@ -382,18 +456,8 @@ def parse(ocr_text: str) -> dict:
                 "현금가",
             ],
         ),
-        "normal_price": _extract_money(
-            searchable_text,
-            [
-                "정상가",
-                "정상가격",
-                "정상 판매가",
-                "정상판매가",
-                "정가",
-                "할인 전 가격",
-                "할인전 가격",
-            ],
-        ),
+        "normal_price": _extract_normal_price(searchable_text),
+        
         "monthly_price": _extract_money(
             searchable_text,
             [
