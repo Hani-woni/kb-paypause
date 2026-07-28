@@ -15,9 +15,10 @@ def fuse(business_result: dict | None,
     contract_data = contract_result.get("contract_data", {})
     risks = contract_result.get("risks", [])
     high_risks = [r for r in risks if r.get("severity") == "high"]
+    medium_risks = [r for r in risks if r.get("severity") == "medium"]
 
     business_risk_level = business_result.get("risk_level") if business_result else None
-    policy_score = _score(len(high_risks), business_risk_level, refund_result)
+    policy_score = _score(len(high_risks), len(medium_risks), business_risk_level, refund_result)
     final_level = level(policy_score)
 
     summary = {
@@ -58,11 +59,12 @@ def fuse(business_result: dict | None,
     }
 
 
-def _score(high_risk_count: int, business_risk_level: str | None,
+def _score(high_risk_count: int, medium_risk_count: int, business_risk_level: str | None,
            refund_result: dict) -> int:
     """점수가 낮을수록 위험 (0~100). TODO: A·B 실 데이터 연결 후 가중치 조정."""
     score = 100
     score -= high_risk_count * 30
+    score -= medium_risk_count * 10
     if business_risk_level in ("caution", "check_required"):
         score -= 20
     disadvantage = refund_result.get("expected_disadvantage") or 0
