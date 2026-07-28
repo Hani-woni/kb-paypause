@@ -266,6 +266,36 @@ def _analyze_keyword_rule(
     return _make_result(rule, evidence, keyword)
 
 
+def _analyze_guarantee_insurance_disclosure(
+    rule: dict,
+    clauses: list[str],
+) -> Optional[dict]:
+    """보증보험 가입은 언급됐지만 종류·보장 내용이 함께 확인되지 않는지 확인한다.
+
+    보증보험 가입 자체가 확인되지 않는 계약서는 애초에 미가입일 수 있어
+    위험으로 판단하지 않는다 (체력단련장 표준약관 제4조제3항은 가입한
+    경우에만 고지 의무를 부과한다). 보장 내용은 가입 문장과 별도 문장에
+    적히는 경우가 많아, 같은 조항이 아니라 원문 전체를 기준으로 확인한다.
+    """
+    keywords = rule.get("keywords", [])
+    detail_keywords = rule.get("detail_keywords", [])
+
+    evidence, matched_keyword = _find_keyword_evidence(clauses, keywords)
+
+    if evidence is None:
+        return None
+
+    full_text = " ".join(clauses)
+    has_detail = any(
+        _contains_keyword(full_text, detail) for detail in detail_keywords
+    )
+
+    if has_detail:
+        return None
+
+    return _make_result(rule, evidence, matched_keyword)
+
+
 def analyze(contract_data: dict) -> list[dict]:
     """계약서 위험조항 및 확인 필요사항을 반환한다.
 
@@ -313,6 +343,12 @@ def analyze(contract_data: dict) -> list[dict]:
             "SESSION_DEDUCTION_CHECK",
         }:
             result = _analyze_keyword_rule(
+                rule,
+                clauses,
+            )
+
+        elif code == "GUARANTEE_INSURANCE_NOT_DISCLOSED":
+            result = _analyze_guarantee_insurance_disclosure(
                 rule,
                 clauses,
             )
