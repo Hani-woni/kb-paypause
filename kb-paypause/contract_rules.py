@@ -2,13 +2,6 @@
 
 contract_data와 config/contract_rules.json을 바탕으로
 계약서 위험조항 및 확인 필요사항을 탐지한다.
-
-작성 원칙
----------
-1. config에 등록된 구현 대상 규칙만 사용한다.
-2. 계약서 원문에서 발견된 문장을 evidence로 반환한다.
-3. 확인되지 않은 내용을 임의로 위험하다고 판단하지 않는다.
-4. 법률적 확정 판단이 아니라 공식자료에 근거한 위험 신호를 제공한다.
 """
 
 from __future__ import annotations
@@ -27,7 +20,6 @@ CONFIG_PATH = (
 
 
 def _load_rules() -> list[dict]:
-    """config/contract_rules.json에서 구현 대상 규칙을 불러온다."""
     try:
         with CONFIG_PATH.open("r", encoding="utf-8") as file:
             config = json.load(file)
@@ -51,7 +43,6 @@ def _load_rules() -> list[dict]:
 
 
 def _normalize_text(value: Any) -> str:
-    """비교용으로 텍스트 공백을 정리한다."""
     if not isinstance(value, str):
         return ""
 
@@ -64,13 +55,14 @@ def _normalize_text(value: Any) -> str:
 
 
 def _split_clauses(text: str) -> list[str]:
-    """OCR 원문을 증거로 제시할 수 있는 문장·조항 단위로 나눈다."""
+    """PDF 줄바꿈으로 문장이 중간에 잘리지 않도록 문장 단위로 분리한다."""
     if not text:
         return []
 
+    merged = re.sub(r"\s*\n\s*", " ", text)
     parts = re.split(
-        r"(?<=[.!?。])\s+|\n+|(?=\s*제\d+\s*조)",
-        text,
+        r"(?<=[.!?。])\s+|(?=\s*제\s*\d+\s*조)",
+        merged,
     )
 
     clauses = []
@@ -85,7 +77,6 @@ def _split_clauses(text: str) -> list[str]:
 
 
 def _contains_keyword(text: str, keyword: str) -> bool:
-    """공백 차이를 일부 허용하여 키워드 포함 여부를 확인한다."""
     normalized_text = re.sub(r"\s+", "", text).lower()
     normalized_keyword = re.sub(r"\s+", "", keyword).lower()
 
@@ -97,7 +88,6 @@ def _find_keyword_evidence(
     keywords: list[str],
     required_context: Optional[list[str]] = None,
 ) -> tuple[Optional[str], Optional[str]]:
-    """키워드가 들어 있는 실제 원문 조항과 키워드를 반환한다."""
     for clause in clauses:
         matched_keyword = next(
             (
@@ -126,7 +116,6 @@ def _find_keyword_evidence(
 
 
 def _to_float(value: Any) -> Optional[float]:
-    """bool을 제외하고 값을 안전하게 실수로 변환한다."""
     if value is None or isinstance(value, bool):
         return None
 
@@ -142,7 +131,6 @@ def _make_result(
     matched_keyword: Optional[str] = None,
     evidence_source: str = "contract_text",
 ) -> dict:
-    """공통 위험항목 반환 형식을 만든다."""
     return {
         "code": rule.get("code"),
         "title": rule.get("title"),
@@ -152,13 +140,8 @@ def _make_result(
         "evidence": evidence,
         "evidence_source": evidence_source,
         "matched_keyword": matched_keyword,
-        "reference_documents": rule.get(
-            "reference_documents",
-            [],
-        ),
-        "reference_summary": rule.get(
-            "reference_summary"
-        ),
+        "reference_documents": rule.get("reference_documents", []),
+        "reference_summary": rule.get("reference_summary"),
         "output_limit": rule.get("output_limit"),
     }
 
@@ -168,40 +151,43 @@ def _analyze_normal_price_deduction(
     contract_data: dict,
     clauses: list[str],
 ) -> Optional[dict]:
-    """정상가가 중도해지 환급 공제 기준으로 사용되는지 확인한다."""
-    keywords = rule.get("keywords", [])
-
     evidence, keyword = _find_keyword_evidence(
         clauses,
-        keywords,
+        rule.get("keywords", []),
         required_context=[
             "환불",
             "환급",
             "해지",
             "공제",
             "이용대금",
+            "사용기간",
         ],
     )
 
     if evidence:
         return _make_result(rule, evidence, keyword)
 
-    # parser가 환급 공제 기준을 normal_price로 판정했지만
-    # 금액 등이 중간에 있어 설정 키워드가 그대로 일치하지 않는 경우
     if (
         contract_data.get("refund_base") == "normal_price"
         and contract_data.get("raw_text")
     ):
-        normal_price_keywords = [
-            "정상가",
-            "정상가격",
-            "정가",
-            "할인 전 가격",
-        ]
-
         evidence, keyword = _find_keyword_evidence(
             clauses,
-            normal_price_keywords,
+            [
+                "정상가",
+                "정상가격",
+                "정가",
+                "할인 전 가격",
+                "할인 전 정상가",
+            ],
+            required_context=[
+                "환불",
+                "환급",
+                "해지",
+                "공제",
+                "사용기간",
+                "이용한 횟수",
+            ],
         )
 
         if evidence:
@@ -215,7 +201,6 @@ def _analyze_penalty_excess(
     contract_data: dict,
     clauses: list[str],
 ) -> Optional[dict]:
-    """계약서에 기재된 위약금률이 기준을 초과하는지 확인한다."""
     threshold = rule.get("threshold", {})
     field = threshold.get("field")
     operator = threshold.get("operator")
@@ -236,7 +221,6 @@ def _analyze_penalty_excess(
     if evidence:
         return _make_result(rule, evidence, keyword)
 
-    # 원문 없이 사용자가 직접 구조화 값을 입력한 경우
     return _make_result(
         rule,
         evidence=f"입력된 위약금률: {value:g}%",
@@ -249,7 +233,6 @@ def _analyze_keyword_rule(
     rule: dict,
     clauses: list[str],
 ) -> Optional[dict]:
-    """일반 키워드 규칙을 실제 계약서 원문에서 탐지한다."""
     keywords = rule.get("keywords", [])
 
     if not keywords:
@@ -258,6 +241,7 @@ def _analyze_keyword_rule(
     evidence, keyword = _find_keyword_evidence(
         clauses,
         keywords,
+        required_context=rule.get("required_context"),
     )
 
     if evidence is None:
@@ -266,28 +250,100 @@ def _analyze_keyword_rule(
     return _make_result(rule, evidence, keyword)
 
 
+def _analyze_multiple_deduction(
+    rule: dict,
+    clauses: list[str],
+) -> Optional[dict]:
+    deduction_groups = rule.get("deduction_groups", {})
+    minimum_groups = int(rule.get("minimum_groups", 2))
+
+    for clause in clauses:
+        has_refund_context = any(
+            _contains_keyword(clause, keyword)
+            for keyword in ["환불", "환급", "공제"]
+        )
+
+        if not has_refund_context:
+            continue
+
+        matched_groups = []
+
+        for group_name, keywords in deduction_groups.items():
+            if any(
+                _contains_keyword(clause, keyword)
+                for keyword in keywords
+            ):
+                matched_groups.append(group_name)
+
+        if len(matched_groups) >= minimum_groups:
+            return _make_result(
+                rule,
+                evidence=clause,
+                matched_keyword=", ".join(matched_groups),
+            )
+
+    return None
+
+
+def _analyze_closure_refund_restriction(
+    rule: dict,
+    contract_data: dict,
+    clauses: list[str],
+) -> Optional[dict]:
+    evidence, keyword = _find_keyword_evidence(
+        clauses,
+        rule.get("keywords", []),
+        required_context=[
+            "폐업",
+            "휴업",
+            "영업 중단",
+            "지점 이전",
+        ],
+    )
+
+    if evidence:
+        return _make_result(rule, evidence, keyword)
+
+    if contract_data.get("closure_refund_clause") is False:
+        evidence, keyword = _find_keyword_evidence(
+            clauses,
+            [
+                "현금 환불",
+                "환불을 요구할 수 없다",
+                "환급을 요구할 수 없다",
+                "환불 불가",
+                "환급 불가",
+            ],
+            required_context=[
+                "폐업",
+                "휴업",
+                "영업 중단",
+                "지점 이전",
+            ],
+        )
+
+        if evidence:
+            return _make_result(rule, evidence, keyword)
+
+    return None
+
+
 def _analyze_guarantee_insurance_disclosure(
     rule: dict,
     clauses: list[str],
 ) -> Optional[dict]:
-    """보증보험 가입은 언급됐지만 종류·보장 내용이 함께 확인되지 않는지 확인한다.
-
-    보증보험 가입 자체가 확인되지 않는 계약서는 애초에 미가입일 수 있어
-    위험으로 판단하지 않는다 (체력단련장 표준약관 제4조제3항은 가입한
-    경우에만 고지 의무를 부과한다). 보장 내용은 가입 문장과 별도 문장에
-    적히는 경우가 많아, 같은 조항이 아니라 원문 전체를 기준으로 확인한다.
-    """
-    keywords = rule.get("keywords", [])
-    detail_keywords = rule.get("detail_keywords", [])
-
-    evidence, matched_keyword = _find_keyword_evidence(clauses, keywords)
+    evidence, matched_keyword = _find_keyword_evidence(
+        clauses,
+        rule.get("keywords", []),
+    )
 
     if evidence is None:
         return None
 
     full_text = " ".join(clauses)
     has_detail = any(
-        _contains_keyword(full_text, detail) for detail in detail_keywords
+        _contains_keyword(full_text, detail)
+        for detail in rule.get("detail_keywords", [])
     )
 
     if has_detail:
@@ -296,25 +352,26 @@ def _analyze_guarantee_insurance_disclosure(
     return _make_result(rule, evidence, matched_keyword)
 
 
+KEYWORD_RULE_CODES = {
+    "NON_REFUNDABLE",
+    "PT_NORMAL_PRICE_DEDUCTION",
+    "REFUND_DEFICIT_ADDITIONAL_PAYMENT",
+    "REFUND_APPLICATION_RESTRICTION",
+    "SUSPENSION_REASON_RESTRICTION",
+    "TRAINER_CHANGE_NO_REFUND",
+    "BUSINESS_LIABILITY_EXEMPTION",
+    "UNILATERAL_TERMINATION_NO_REFUND",
+    "EXCLUSIVE_JURISDICTION",
+    "CONTRACT_TERMS_NOT_PROVIDED",
+    "SESSION_DEDUCTION_CHECK",
+}
+
+
 def analyze(contract_data: dict) -> list[dict]:
-    """계약서 위험조항 및 확인 필요사항을 반환한다.
-
-    Parameters
-    ----------
-    contract_data:
-        contract_parser.parse()가 반환한 공통 계약 데이터.
-
-    Returns
-    -------
-    list[dict]
-        final_fusion.py에서 사용할 위험항목 목록.
-    """
     if not isinstance(contract_data, dict):
         return []
 
-    raw_text = _normalize_text(
-        contract_data.get("raw_text")
-    )
+    raw_text = _normalize_text(contract_data.get("raw_text"))
     clauses = _split_clauses(raw_text)
     results = []
 
@@ -336,12 +393,20 @@ def analyze(contract_data: dict) -> list[dict]:
                 clauses,
             )
 
-        elif code in {
-            "NON_REFUNDABLE",
-            "BUSINESS_LIABILITY_EXEMPTION",
-            "CONTRACT_TERMS_NOT_PROVIDED",
-            "SESSION_DEDUCTION_CHECK",
-        }:
+        elif code == "MULTIPLE_DEDUCTION":
+            result = _analyze_multiple_deduction(
+                rule,
+                clauses,
+            )
+
+        elif code == "CLOSURE_CASH_REFUND_RESTRICTION":
+            result = _analyze_closure_refund_restriction(
+                rule,
+                contract_data,
+                clauses,
+            )
+
+        elif code in KEYWORD_RULE_CODES:
             result = _analyze_keyword_rule(
                 rule,
                 clauses,
@@ -353,8 +418,6 @@ def analyze(contract_data: dict) -> list[dict]:
                 clauses,
             )
 
-        # config에 규칙이 추가되어도 코드가 지원하지 않으면
-        # 임의 판단하지 않고 건너뛴다.
         if result is not None:
             results.append(result)
 
