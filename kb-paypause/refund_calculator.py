@@ -40,7 +40,7 @@ def calculate(contract_data: dict, usage: dict, category: str = "default") -> di
     if contract_data.get("contract_type") == "bundle" and contract_price is None:
         return {"error": "MISSING_BUNDLE_PRICE",
                 "message": "결합형 상품의 항목별 가격이 없어 계산할 수 없습니다."}
-    if None in (contract_price, contract_months, used_months):
+    if None in (contract_price, contract_months, used_months) or not contract_months:
         return {"error": "MISSING_FIELDS",
                 "message": "환급 계산에 필요한 값이 부족합니다."}
 
@@ -69,9 +69,7 @@ def calculate(contract_data: dict, usage: dict, category: str = "default") -> di
         "contract_refund": contract_refund,
         "reference_refund": reference_refund,
         "expected_disadvantage": expected_disadvantage,
-        "assumptions": [
-            f"사용기간 {used_months}개월",
-            f"위약금 상한 {int(penalty_cap * 100)}% (공정위고시 제2019-9호 제4조)",
-        ],
+        "used_months": used_months,
+        "penalty_cap_percent": int(penalty_cap * 100),
         "legal_basis": "공정거래위원회고시 제2019-9호 (방문판매법 제32조④)",
     }
