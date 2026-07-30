@@ -40,8 +40,6 @@ def compare(contract_data: dict) -> dict:
 
     options = []
     for method, exposure in exposures.items():
-        if method == "cash":
-            continue
         risk_reduction = None
         if cash_exposure is not None:
             risk_reduction = cash_exposure - exposure
@@ -69,6 +67,7 @@ def compare(contract_data: dict) -> dict:
 
 def _note_for(method: str) -> str:
     notes = {
+        "cash": "전액을 사업자에게 바로 지급해 노출액이 크고, 카드사 같은 보호장치가 없습니다.",
         "monthly": "장기 선납 위험을 줄입니다.",
         "card_installment": "할부항변권 적용 여부를 별도 확인하세요.",
         "card_lump_sum": "카드 일시불은 선불 노출액이 큽니다.",
