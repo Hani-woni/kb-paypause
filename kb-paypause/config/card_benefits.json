@@ -1,0 +1,80 @@
+{
+  "version": "1.0",
+  "category": "gym",
+  "source": {
+    "type": "KB국민카드 공식 상품설명서(PDF)",
+    "note": "사용자가 공식 상품설명서 PDF를 직접 확인해 제공함",
+    "verified_date": "2026-07-30"
+  },
+  "cards": [
+    {
+      "name": "KB국민 굿데이카드",
+      "doc_id": "A-20100826-9227-00149-07",
+      "compliance_review": "241008-05039-PIF (2024.10.08)",
+      "fitness_benefit": {
+        "discount_type": "청구할인",
+        "discount_rate_percent": 10,
+        "eligible_merchant_category": "종합스포츠센터 업종",
+        "excluded_categories": ["수영장", "골프연습장", "테니스장", "요가", "스포츠용품점"],
+        "monthly_limit_won": 300000,
+        "monthly_limit_shared_with": "학원 업종과 통합 한도",
+        "required_tier": "3구간 (직전월 결제회수실적 120만원 이상)"
+      },
+      "annual_fee": {
+        "국내_모바일단독": 1000,
+        "국내_일반": 5000,
+        "국내외겸용_모바일단독": 6000,
+        "국내외겸용_일반": 10000,
+        "플래티늄": 100000
+      },
+      "point_accrual": "기본 포인트리 적립 없음 (스타샵 가맹점만 적립)"
+    },
+    {
+      "name": "KB국민 굿데이올림카드",
+      "doc_id": "A-20150213-9227-00150-08",
+      "compliance_review": "241008-05039-PIF (2024.10.08)",
+      "credit_finance_association_review": "2020-C1a-09144호 (2020.10.12)",
+      "fitness_benefit": {
+        "discount_type": "청구할인",
+        "discount_rate_percent": 10,
+        "eligible_merchant_category": "종합스포츠센터 업종",
+        "excluded_categories": ["레포츠클럽", "수영장", "골프연습장", "테니스장", "요가", "스포츠용품점"],
+        "monthly_limit_won": 300000,
+        "monthly_limit_shared_with": "학원 업종과 통합 한도",
+        "required_tier": "3구간 (전월이용실적 120만원 이상)"
+      },
+      "annual_fee": {
+        "국내_모바일단독": 9000,
+        "국내_일반": 15000,
+        "국내외겸용_모바일단독": 14000,
+        "국내외겸용_일반": 20000
+      },
+      "point_accrual": "기본 포인트리 적립 없음 (스타샵 가맹점만 적립)"
+    },
+    {
+      "name": "KB국민 My WE:SH 카드",
+      "alias": "마이 위시 카드",
+      "doc_id": "A-20221226-9120-00633-01",
+      "compliance_review": "241206-06150-PIF (2024.12.06)",
+      "credit_finance_association_review": "2024-C1a-15690호 (2024.12.16)",
+      "fitness_benefit": {
+        "discount_type": "청구할인",
+        "discount_rate_percent": 5,
+        "requires_service_pack": "더욱 진심 서비스 3개 팩 중 [관리에 진심] 선택 시에만 적용(자동 적용 아님)",
+        "eligible_merchant_category": "종합스포츠센터, 골프(연습)장, 테니스장, 수영장, 요가, 볼링장, 스포츠용품점, 레저용품점 업종",
+        "excluded_categories": [],
+        "monthly_limit_won": 10000,
+        "monthly_limit_shared_with": "미용실·온라인서점·올리브영과 통합 한도",
+        "required_tier": "전월 이용실적 40만원 이상",
+        "birthday_month_bonus": "생일월엔 한도 2배(1만원 → 2만원, 단 전월실적 40만원 이상 충족 필요·실적유예기간 없음)"
+      },
+      "annual_fee": {
+        "일반카드": 15000,
+        "모바일단독카드": 9000
+      },
+      "point_accrual": "정보 없음 (상품설명서에 기본 포인트리 관련 언급 없음)"
+    }
+  ],
+  "output_limit": "종합스포츠센터 업종으로 등록된 가맹점만 할인 대상이며, 요가·수영장 단독 시설이나 PT샵 등은 가맹점 등록 방식에 따라 제외될 수 있음(상품설명서에 명시된 제외 목록 외에는 임의로 판단하지 않음).",
+  "disclaimer": "위 내용은 사용자가 확인한 KB국민카드 공식 상품설명서(PDF) 기준입니다. 부가서비스는 카드사 정책에 따라 변경될 수 있으니, 결제 전 KB국민카드 공식 홈페이지에서 최신 조건을 다시 확인하세요."
+}

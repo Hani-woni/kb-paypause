@@ -1,6 +1,7 @@
 """[C 소유] Streamlit UI + 통합 진입점"""
 import base64
 import datetime
+import json
 import os
 import tempfile
 
@@ -25,12 +26,8 @@ if "step" not in st.session_state:
 if "contract_data" not in st.session_state:
     st.session_state.contract_data = {}
 
-LEVEL_GRADIENT = {
-    "hold": "linear-gradient(135deg,#F04438,#D93025)",
-    "revise": "linear-gradient(135deg,#FFC24B,#B8860B)",
-    "payable": "linear-gradient(135deg,#4CAF6D,#1E8E3E)",
-}
 SCORE_COLOR = {"hold": "#D93025", "revise": "#B8860B", "payable": "#1E8E3E"}
+RISK_BAND_LABEL = {"hold": "높은", "revise": "중간", "payable": "낮은"}
 SEVERITY_STYLE = {
     "high": {"label": "높음", "color": "#D93025", "bg": "#FDEBEC"},
     "medium": {"label": "중간", "color": "#B8860B", "bg": "#FFF3CC"},
@@ -58,23 +55,77 @@ def _load_logo_b64():
 KB_LOGO_B64 = _load_logo_b64()
 
 
-def render_section_header(icon: str, title: str, bg: str = "#F7F7F7"):
-    st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:8px;margin:4px 0 14px 0;">
-      <div style="width:28px;height:28px;border-radius:9px;background:{bg};
-                  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{icon}</div>
-      <span style="font-size:16px;font-weight:800;color:#232323;">{title}</span>
-    </div>
-    """, unsafe_allow_html=True)
+def _load_card_benefits():
+    """확인된 KB국민카드 공식 상품설명서 기준 헬스장 관련 혜택 데이터."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "card_benefits.json")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    return None
 
 
-def render_subsection(icon: str, title: str):
-    st.markdown(f"""
-    <div style="font-size:12px;color:#8A8A8A;font-weight:800;margin:2px 0 8px 0;
-                display:flex;align-items:center;gap:5px;">
-      <span>{icon}</span><span>{title}</span>
-    </div>
-    """, unsafe_allow_html=True)
+CARD_BENEFITS = _load_card_benefits()
+
+
+def render_page_title(icon: str, title: str, subtitle: str = None):
+    """스텝당 한 번, 페이지 맥락을 알려주는 제목."""
+    st.markdown(
+        f'<div style="margin:4px 0 18px 0;">'
+        f'<div style="font-size:17px;font-weight:800;color:#232323;'
+        f'display:flex;align-items:center;gap:8px;">'
+        f'<span style="font-size:16px;">{icon}</span>{title}</div>'
+        + (f'<div style="font-size:12.5px;color:#8A8A8A;margin-top:6px;line-height:1.5;">{subtitle}</div>'
+           if subtitle else "")
+        + '</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_eyebrow(icon: str, title: str):
+    """카드 제목을 가볍게(작고 연하게) 보여주는 마이크로 헤더."""
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">'
+        f'<span style="font-size:12.5px;">{icon}</span>'
+        f'<span style="font-size:11.5px;font-weight:800;color:#9A9A9A;letter-spacing:0.03em;">{title}</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_money_field(label: str, value, key: str, step: int = 10000):
+    """OCR로 못 찾은 값(None)은 빈 칸으로 두고, 왜 비었는지 바로 아래에 안내한다."""
+    st.number_input(label, value=value, step=step, key=key)
+    if value is None:
+        st.caption("⚠️ 계약서에서 못 찾았어요. 해당 없으면 비워두고, 있으면 입력해주세요.")
+
+
+def render_stat_grid(items):
+    """(icon, label, value) 튜플 리스트를 아이콘 포함 표 형태로 렌더링한다."""
+    rows_html = "".join(
+        f'<div style="display:flex;justify-content:space-between;align-items:center;'
+        f'padding:11px 0;{"border-top:1px solid #F2F2F2;" if i > 0 else ""}">'
+        f'<span style="font-size:12.5px;color:#8A8A8A;font-weight:700;display:flex;align-items:center;gap:7px;">'
+        f'<span style="font-size:13px;">{icon}</span>{label}</span>'
+        f'<span style="font-size:14.5px;color:#232323;font-weight:800;text-align:right;">{value}</span>'
+        f'</div>'
+        for i, (icon, label, value) in enumerate(items)
+    )
+    st.markdown(rows_html, unsafe_allow_html=True)
+
+
+def render_insight_rows(items):
+    """(icon, label, detail, color) 튜플 리스트를 아이콘 목록으로 렌더링한다."""
+    rows = "".join(
+        f'<div style="display:flex;align-items:flex-start;gap:9px;padding:10px 0;'
+        f'{"border-top:1px solid #F2F2F2;" if i > 0 else ""}">'
+        f'<span style="font-size:13px;flex-shrink:0;">{icon}</span>'
+        f'<div style="line-height:1.5;">'
+        + (f'<span style="font-size:12px;font-weight:800;color:{color};">{label}</span> ' if label else "")
+        + f'<span style="font-size:12.5px;color:#5C5C5C;">{detail}</span>'
+        f'</div></div>'
+        for i, (icon, label, detail, color) in enumerate(items)
+    )
+    st.markdown(rows, unsafe_allow_html=True)
 
 
 st.markdown("""
@@ -114,21 +165,11 @@ st.markdown("""
 div[class*="st-key-kb_scroll"] { padding:0 20px; }
 .st-key-kb_nav { padding:12px 20px 0 20px; border-top:1px solid #F0F0F0; }
 div[class*="st-key-kb_score_card"], .st-key-kb_biz_card, .st-key-kb_pay_card { padding:16px !important; }
-div[class*="st-key-kb_score_card"] [data-testid="stProgress"] { margin-top:6px; }
-.st-key-kb_score_card_hold [data-testid="stProgress"] > div > div > div { background-color:#D93025 !important; }
-.st-key-kb_score_card_revise [data-testid="stProgress"] > div > div > div { background-color:#B8860B !important; }
-.st-key-kb_score_card_payable [data-testid="stProgress"] > div > div > div { background-color:#1E8E3E !important; }
-.kb-card { background:#FFFFFF; border:1px solid #F0F0F0; border-radius:16px;
-           padding:16px 17px; box-shadow:0 3px 12px rgba(0,0,0,0.05); margin-bottom:12px; }
-.kb-box { background:#F7F7F7; border-radius:16px; padding:16px 20px; margin-top:16px; }
-.kb-badge-lg { color:#FFFFFF; font-weight:800; font-size:17px; padding:13px 22px;
-               border-radius:14px; display:inline-block; }
-.kb-quote { font-size:12px; color:#8A8A8A; margin-top:10px; background:#F7F7F7;
-            border-radius:10px; padding:10px 12px; line-height:1.6; }
+.kb-box { background:#F7F7F7; border-radius:14px; padding:14px 16px; margin-top:16px; }
+.kb-quote { font-size:12.5px; color:#6B6B6B; margin-top:4px; font-style:italic;
+            padding:2px 0; line-height:1.6; }
 .kb-recommend { background:#FFBC00; color:#232323; font-size:10px; font-weight:800;
                 padding:2px 7px; border-radius:6px; margin-left:6px; }
-.kb-bubble { border-radius:4px 16px 16px 16px; padding:12px 15px; margin-bottom:10px;
-             font-size:13px; color:#3D3D3D; line-height:1.6; }
 [data-testid="stFileUploaderDropzone"] {
   border: 1.5px dashed #E8C666 !important; border-radius: 16px !important;
   background: #FFFDF5 !important;
@@ -199,7 +240,7 @@ def render_step_content(step: int):
         st.markdown("""
         <div style="text-align:center;padding:16px 4px 4px 4px;">
           <div style="width:72px;height:72px;border-radius:20px;background:#FFF6DB;margin:0 auto;
-                      display:flex;align-items:center;justify-content:center;font-size:30px;">📎</div>
+                      display:flex;align-items:center;justify-content:center;font-size:30px;">📄</div>
           <div style="font-size:18px;font-weight:800;color:#232323;margin-top:18px;">계약서를 업로드해 주세요</div>
           <div style="font-size:13px;color:#8A8A8A;margin-top:8px;line-height:1.6;">
             이미지 또는 PDF 파일을 올리면<br>주요 항목을 자동으로 추출해 드려요</div>
@@ -242,12 +283,11 @@ def render_step_content(step: int):
             st.caption("계약서 파일을 올리면 위 항목들을 자동으로 분석해 드려요.")
 
     elif step == 1:
-        render_section_header("✏️", "추출된 계약 정보 확인", "#EAF4FF")
-        st.caption("OCR로 추출된 값이에요. 틀린 부분은 직접 고쳐주세요.")
+        render_page_title("✏️", "추출된 계약 정보 확인", "OCR로 추출된 값이에요. 틀린 부분은 직접 고쳐주세요.")
         d = st.session_state.contract_data
 
         with st.container(border=True):
-            render_subsection("🏢", "업체 정보")
+            render_eyebrow("🏢", "업체 정보")
             st.text_input("업체명", d.get("business_name", ""), key="f_business_name")
 
             candidates = business_lookup.search(st.session_state.f_business_name, d.get("business_address"))
@@ -268,7 +308,7 @@ def render_step_content(step: int):
                 st.session_state.selected_business_id = candidates[choice_idx]["business_id"]
 
         with st.container(border=True):
-            render_subsection("📅", "이용 기간")
+            render_eyebrow("📅", "이용 기간")
             months = d.get("contract_months") or 0
             default_start = datetime.date.today()
             default_end = default_start + datetime.timedelta(days=30 * months) if months else default_start
@@ -283,20 +323,25 @@ def render_step_content(step: int):
             st.number_input("지금까지 사용한 기간 (개월)", value=1, min_value=0, step=1, key="f_used_months")
 
         with st.container(border=True):
-            render_subsection("💰", "금액 정보")
+            render_eyebrow("💰", "금액 정보")
             c1, c2 = st.columns(2)
             with c1:
-                st.number_input("실제 결제금액(원)", value=d.get("contract_price", 0), step=10000, key="f_contract_price")
-                st.number_input("정상가격(원)", value=d.get("normal_price", 0), step=10000, key="f_normal_price")
+                render_money_field("실제 결제금액(원)", d.get("contract_price"), "f_contract_price")
+                render_money_field("정상가격(원)", d.get("normal_price"), "f_normal_price")
             with c2:
-                st.number_input("현금가격(원)", value=d.get("cash_price", 0), step=10000, key="f_cash_price")
-                st.number_input("월결제(원)", value=d.get("monthly_price", 0), step=10000, key="f_monthly_price")
-            st.number_input("위약금률(%)", value=d.get("penalty_rate", 0.0), step=1.0, key="f_penalty_rate")
+                render_money_field("현금가격(원)", d.get("cash_price"), "f_cash_price")
+                render_money_field("월결제(원)", d.get("monthly_price"), "f_monthly_price")
+            render_money_field("위약금률(%)", d.get("penalty_rate"), "f_penalty_rate", step=1.0)
 
         with st.container(border=True):
-            render_subsection("💳", "결제 방식")
-            st.selectbox("결제수단", ["bank_transfer", "cash", "card_lump_sum", "card_installment", "monthly"],
-                         index=0, key="f_payment_method",
+            render_eyebrow("💳", "결제 방식")
+            payment_methods = ["bank_transfer", "cash", "card_lump_sum", "card_installment", "monthly"]
+            default_method_index = (
+                payment_methods.index(d["payment_method"])
+                if d.get("payment_method") in payment_methods else 0
+            )
+            st.selectbox("결제수단", payment_methods,
+                         index=default_method_index, key="f_payment_method",
                          format_func=lambda m: PAYMENT_METHOD_FORM_LABELS.get(m, m))
             st.number_input("할부 개월수 (해당 시)", value=d.get("installment_months") or 0, min_value=0, step=1,
                              key="f_installment_months")
@@ -307,81 +352,109 @@ def render_step_content(step: int):
         business = r["business"]
         score_color = SCORE_COLOR[r["level"]]
 
+        high_risks = [x for x in r["contract_risks"] if x["severity"] == "high"]
+        medium_risks = [x for x in r["contract_risks"] if x["severity"] == "medium"]
+        risk_band_text = (
+            f"계약 위험조항·업체 정보·환급 조건을 종합한 상대위험 {RISK_BAND_LABEL[r['level']]} 구간이에요."
+        )
+
         st.markdown(
-            f'<div style="text-align:center;padding-top:8px;">'
-            f'<div style="font-size:13px;color:#8A8A8A;font-weight:700;">'
+            f'<div style="text-align:center;padding:12px 0 4px;">'
+            f'<div style="font-size:12.5px;color:#9A9A9A;font-weight:700;">'
             f'{st.session_state.contract_data.get("business_name", "")}</div>'
-            f'<div class="kb-badge-lg" style="background:{LEVEL_GRADIENT[r["level"]]};margin-top:16px;">'
-            f'{r["level_label"]}</div></div>',
+            f'<div style="font-size:27px;font-weight:900;color:{score_color};margin-top:8px;'
+            f'letter-spacing:-0.01em;">{r["level_label"]}</div>'
+            f'<div style="font-size:12.5px;color:#8A8A8A;margin-top:10px;line-height:1.5;">{risk_band_text}</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
 
-        st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
+        if business is not None and business["risk_level"] in ("caution", "check_required"):
+            biz_chip_label = RISK_LEVEL_LABEL[business["risk_level"]]
+            biz_chip_color = "#D93025" if business["risk_level"] == "check_required" else "#B8860B"
+        elif business is not None:
+            biz_chip_label, biz_chip_color = "양호", "#1E8E3E"
+        else:
+            biz_chip_label, biz_chip_color = "정보없음", "#8A8A8A"
 
-        with st.container(border=True, key=f"kb_score_card_{r['level']}"):
-            st.markdown(
-                f'<div style="display:flex;justify-content:space-between;font-size:12px;'
-                f'color:#8A8A8A;font-weight:700;">'
-                f'<span>위험 점수</span><span style="color:{score_color};font-weight:800;">'
-                f'{r["policy_score"]} / 100</span></div>',
-                unsafe_allow_html=True,
-            )
-            st.progress(r["policy_score"] / 100)
+        if len([x for x in r["contract_risks"] if x["severity"] == "high"]) > 0:
+            contract_chip_label = f"심각 {len([x for x in r['contract_risks'] if x['severity'] == 'high'])}건"
+            contract_chip_color = "#D93025"
+        elif len([x for x in r["contract_risks"] if x["severity"] == "medium"]) > 0:
+            contract_chip_label = f"확인 {len([x for x in r['contract_risks'] if x['severity'] == 'medium'])}건"
+            contract_chip_color = "#B8860B"
+        else:
+            contract_chip_label, contract_chip_color = "양호", "#1E8E3E"
+
+        refund_info = r.get("refund") or {}
+        if refund_info.get("error"):
+            refund_chip_label, refund_chip_color = "정보없음", "#8A8A8A"
+        elif (r["summary"].get("expected_disadvantage") or 0) > 0:
+            refund_chip_label, refund_chip_color = "불리함", "#B8860B"
+        else:
+            refund_chip_label, refund_chip_color = "양호", "#1E8E3E"
+
+        chip_html = "".join(
+            f'<div style="flex:1;background:{color}14;border:1px solid {color}33;border-radius:14px;'
+            f'padding:10px 6px;text-align:center;">'
+            f'<div style="font-size:15px;">{icon}</div>'
+            f'<div style="font-size:10px;color:#8A8A8A;font-weight:700;margin-top:5px;">{label}</div>'
+            f'<div style="font-size:11.5px;font-weight:800;color:{color};margin-top:2px;">{status}</div>'
+            f'</div>'
+            for icon, label, status, color in [
+                ("🏢", "업체", biz_chip_label, biz_chip_color),
+                ("📄", "계약", contract_chip_label, contract_chip_color),
+                ("💰", "환급", refund_chip_label, refund_chip_color),
+            ]
+        )
+        st.markdown(f'<div style="display:flex;gap:8px;margin:16px 0 4px;">{chip_html}</div>', unsafe_allow_html=True)
+        st.caption("위 3가지를 종합해 최상단 판단을 산출해요.")
+
+        reason_rows = []
+        clause_parts = []
+        if high_risks:
+            clause_parts.append(f"심각한 위험조항 {len(high_risks)}건")
+        if medium_risks:
+            clause_parts.append(f"확인 필요 조항 {len(medium_risks)}건")
+        if clause_parts:
+            reason_rows.append(("📄", "계약 위험조항", " · ".join(clause_parts), "#D93025"))
+        if business and business["risk_level"] in ("caution", "check_required"):
+            reason_rows.append(("🏢", "업체 위험", f"위험등급 {RISK_LEVEL_LABEL[business['risk_level']]}", "#B8860B"))
+        if (r["summary"].get("expected_disadvantage") or 0) > 0:
+            reason_rows.append(("💰", "환급 조건", "계약서 기준 환급액이 공식기준보다 불리함", "#2E6DA4"))
+
+        if reason_rows:
+            with st.container(border=True, key=f"kb_score_card_{r['level']}"):
+                render_eyebrow("🔍", "판단 근거")
+                render_insight_rows(reason_rows)
 
         with st.container(border=True, key="kb_biz_card"):
-            render_section_header("🏢", "업체 정보", "#F7F7F7")
+            render_eyebrow("🏢", "업체 정보")
             if business is None:
                 st.markdown('<div class="kb-box">업체 조회 결과가 없습니다.</div>', unsafe_allow_html=True)
             else:
-                risk_kr = RISK_LEVEL_LABEL[business["risk_level"]]
-                st.markdown(f"""
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-                  <div style="background:#F7F7F7;border-radius:14px;padding:12px;">
-                    <div style="font-size:10.5px;color:#8A8A8A;font-weight:700;">영업 상태</div>
-                    <div style="font-size:14px;color:#232323;font-weight:800;margin-top:4px;">{business['status']}</div>
-                  </div>
-                  <div style="background:#F7F7F7;border-radius:14px;padding:12px;">
-                    <div style="font-size:10.5px;color:#8A8A8A;font-weight:700;">운영 기간</div>
-                    <div style="font-size:14px;color:#232323;font-weight:800;margin-top:4px;">{business['operation_months']}개월</div>
-                  </div>
-                  <div style="background:#F7F7F7;border-radius:14px;padding:12px;">
-                    <div style="font-size:10.5px;color:#8A8A8A;font-weight:700;">지역 폐업 비율</div>
-                    <div style="font-size:14px;color:#232323;font-weight:800;margin-top:4px;">{business['historical_closure_ratio']}%</div>
-                  </div>
-                  <div style="background:#F7F7F7;border-radius:14px;padding:12px;">
-                    <div style="font-size:10.5px;color:#8A8A8A;font-weight:700;">폐업위험 백분위</div>
-                    <div style="font-size:14px;color:#232323;font-weight:800;margin-top:4px;">{
-                      f"상위 {business['relative_risk_percentile']}%" if business['relative_risk_percentile'] is not None
-                      else "분석 불가"
-                    }</div>
-                  </div>
-                </div>
-                """, unsafe_allow_html=True)
-                st.caption(f"위험 등급 {risk_kr} · 기준일 {business['data_as_of']}")
+                render_stat_grid([
+                    ("🟢", "영업 상태", business["status"]),
+                    ("📅", "운영 기간", f"{business['operation_months']}개월"),
+                    ("📊", "지역 폐업 비율", f"{business['historical_closure_ratio']}%"),
+                ])
+                factor_rows = [
+                    ("・", "", factor, "#9A9A9A")
+                    for factor in business.get("risk_factors", [])
+                ]
+                if factor_rows:
+                    st.markdown('<div style="margin-top:6px;"></div>', unsafe_allow_html=True)
+                    render_insight_rows(factor_rows)
 
         s = r["summary"]
         with st.container(border=True, key="kb_pay_card"):
-            render_section_header("💵", "결제 요약", "#FFF6DB")
-            st.markdown(f"""
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-              <div style="background:#FFF9E6;border-radius:14px;padding:12px;">
-                <div style="font-size:10.5px;color:#8A7126;font-weight:700;">실제 결제금액</div>
-                <div style="font-size:14px;color:#232323;font-weight:800;margin-top:4px;">{_won(s['contract_price'])}</div>
-              </div>
-              <div style="background:#F7F7F7;border-radius:14px;padding:12px;">
-                <div style="font-size:10.5px;color:#8A8A8A;font-weight:700;">현금 할인액</div>
-                <div style="font-size:14px;color:#232323;font-weight:800;margin-top:4px;">{_won(s['cash_discount'])}</div>
-              </div>
-              <div style="background:#FDEBEC;border-radius:14px;padding:12px;">
-                <div style="font-size:10.5px;color:#C23327;font-weight:700;">예상 불이익</div>
-                <div style="font-size:14px;color:#D93025;font-weight:800;margin-top:4px;">{_won(s['expected_disadvantage'])}</div>
-              </div>
-              <div style="background:#F7F7F7;border-radius:14px;padding:12px;">
-                <div style="font-size:10.5px;color:#8A8A8A;font-weight:700;">최대 선불 노출액</div>
-                <div style="font-size:14px;color:#232323;font-weight:800;margin-top:4px;">{_won(s['max_prepaid_exposure'])}</div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+            render_eyebrow("💵", "결제 요약")
+            render_stat_grid([
+                ("💳", "실제 결제금액", _won(s['contract_price'])),
+                ("💵", "현금 할인액", _won(s['cash_discount'])),
+                ("📉", "예상 불이익", _won(s['expected_disadvantage'])),
+                ("🔓", "최대 선불 노출액", _won(s['max_prepaid_exposure'])),
+            ])
 
         risks = r["contract_risks"]
         if risks:
@@ -392,16 +465,21 @@ def render_step_content(step: int):
                 f"{SEVERITY_STYLE[sev]['label']} {cnt}건" for sev, cnt in counts.items()
             )
             st.markdown(f"""
-            <div class="kb-box" style="margin-top:16px;">
-              <span style="font-size:13px;font-weight:800;color:#232323;">⚠️ 계약 위험 항목 {len(risks)}건 발견</span>
-              <div style="font-size:12px;color:#8A8A8A;margin-top:4px;">{breakdown} · 다음 단계에서 자세히 확인하세요</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;
+                        background:#FFFBEA;border:1px solid #FFE9A8;border-radius:14px;
+                        padding:14px 16px;margin-top:20px;">
+              <div>
+                <div style="font-size:13px;font-weight:800;color:#232323;">⚠️ 계약 위험 항목 {len(risks)}건 발견</div>
+                <div style="font-size:11.5px;color:#8A7126;margin-top:4px;">{breakdown} · 다음 단계에서 자세히 확인하세요</div>
+              </div>
+              <span style="font-size:18px;color:#B8860B;flex-shrink:0;">→</span>
             </div>
             """, unsafe_allow_html=True)
 
     elif step == 3:
         r = st.session_state.get("analyzed") or run_analysis()
         risks = r["contract_risks"]
-        render_section_header("⚠️", "계약 위험 항목", "#FDEBEC")
+        render_page_title("⚠️", "계약 위험 항목")
 
         if not risks:
             st.markdown(
@@ -425,7 +503,7 @@ def render_step_content(step: int):
             st.markdown(
                 f'<div style="font-size:13px;color:#232323;font-weight:700;margin-bottom:6px;">'
                 f'총 {len(risks)}건 발견</div>'
-                f'<div style="margin-bottom:14px;">{legend}</div>',
+                f'<div style="margin-bottom:16px;">{legend}</div>',
                 unsafe_allow_html=True,
             )
 
@@ -433,23 +511,21 @@ def render_step_content(step: int):
                 sv = SEVERITY_STYLE[risk["severity"]]
                 score_deduction = {"high": 30, "medium": 10}.get(risk["severity"])
                 score_note = (
-                    f'<div style="font-size:11px;color:{sv["color"]};margin-top:8px;font-weight:700;">'
-                    f'ⓘ 이 조항 때문에 위험 점수 −{score_deduction}점</div>'
+                    f'<div style="font-size:11px;color:{sv["color"]};margin-top:10px;font-weight:700;">'
+                    f'ⓘ 이 조항 때문에 종합점수 -{score_deduction}점</div>'
                     if score_deduction else ""
                 )
                 index_tag = f'위험 {i} · ' if len(risks) > 1 else ""
                 st.markdown(f"""
-                <div class="kb-card" style="border-left:4px solid {sv['color']};">
-                  <div style="display:flex;align-items:center;justify-content:space-between;">
-                    <div>
-                      <span style="background:{sv['bg']};color:{sv['color']};font-size:11px;font-weight:800;
-                                   padding:4px 9px;border-radius:7px;">{sv['label']}</span>
-                      <span style="font-size:14.5px;font-weight:800;color:#232323;margin-left:8px;">{index_tag}{risk['title']}</span>
-                    </div>
-                    <span style="font-size:10px;color:#B0B0B0;font-family:monospace;">{risk['code']}</span>
+                <div style="padding:14px 0;{"border-top:1px solid #F2F2F2;" if i > 1 else ""}">
+                  <div>
+                    <span style="background:{sv['bg']};color:{sv['color']};font-size:11px;font-weight:800;
+                                 padding:4px 9px;border-radius:7px;">{sv['label']}</span>
+                    <span style="font-size:14.5px;font-weight:800;color:#232323;margin-left:8px;">{index_tag}{risk['title']}</span>
                   </div>
-                  <div style="font-size:13px;color:#5C5C5C;margin-top:8px;line-height:1.6;">{risk['description']}</div>
-                  <div class="kb-quote" style="border-left:3px solid {sv['color']};">"{risk['evidence']}"</div>
+                  <div style="font-size:13px;color:#5C5C5C;margin-top:9px;line-height:1.6;">{risk['description']}</div>
+                  <div style="font-size:11px;color:#9A9A9A;font-weight:700;margin-top:11px;">📄 계약서 원문</div>
+                  <div class="kb-quote">"{risk['evidence']}"</div>
                   {score_note}
                 </div>
                 """, unsafe_allow_html=True)
@@ -457,96 +533,152 @@ def render_step_content(step: int):
     elif step == 4:
         r = st.session_state.get("analyzed") or run_analysis()
         rf, options = r["refund"], r["payment_options"]
-        render_section_header("💰", "환급 정보", "#FFF6DB")
-        st.markdown(f"""
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;">
-          <div style="background:#FFF9E6;border-radius:14px;padding:14px 6px;text-align:center;">
-            <div style="font-size:10.5px;color:#8A7126;line-height:1.4;font-weight:700;">계약 기준<br>환급</div>
-            <div style="font-size:15px;font-weight:800;color:#232323;margin-top:8px;">{rf['contract_refund']:,}원</div>
-          </div>
-          <div style="background:#F5F5F5;border-radius:14px;padding:14px 6px;text-align:center;">
-            <div style="font-size:10.5px;color:#8A8A8A;line-height:1.4;font-weight:700;">공식 기준<br>참고 환급</div>
-            <div style="font-size:15px;font-weight:800;color:#232323;margin-top:8px;">{rf['reference_refund']:,}원</div>
-          </div>
-          <div style="background:#FDEBEC;border-radius:14px;padding:14px 6px;text-align:center;">
-            <div style="font-size:10.5px;color:#C23327;line-height:1.4;font-weight:700;">예상<br>불이익</div>
-            <div style="font-size:15px;font-weight:800;color:#D93025;margin-top:8px;">{rf['expected_disadvantage']:,}원</div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if rf.get("assumptions"):
-            st.caption("가정: " + " · ".join(rf["assumptions"]))
+        render_page_title("💰", "환급 정보")
+        if rf.get("error"):
+            st.markdown(
+                f'<div class="kb-box">환급액을 계산할 수 없어요.<br>'
+                f'<span style="color:#8A8A8A;font-size:12px;">{rf.get("message", "필요한 정보가 부족합니다.")} '
+                f'1페이지에서 계약기간·계약금액을 확인해주세요.</span></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            with st.container(border=True):
+                render_stat_grid([
+                    ("📄", "계약 기준 환급", f"{rf['contract_refund']:,}원"),
+                    ("📘", "공식 기준 참고 환급", f"{rf['reference_refund']:,}원"),
+                    ("📉", "예상 불이익", f"{rf['expected_disadvantage']:,}원"),
+                ])
+            st.markdown('<div style="margin-top:14px;"></div>', unsafe_allow_html=True)
+            render_eyebrow("🧮", "이렇게 계산했어요")
+            render_insight_rows([
+                ("📅", "", f"이미 이용한 {rf['used_months']}개월치 이용료만큼 뺐어요.", "#5C5C5C"),
+                ("📉", "", f"위약금은 총 계약금액의 {rf['penalty_cap_percent']}%까지만, 개월 수와 상관없이 딱 한 번 뗄 수 있어요 "
+                            f"(공정위고시 제2019-9호 제4조).", "#5C5C5C"),
+            ])
 
-        render_section_header("💳", "결제수단 비교", "#EAF4FF")
-        best = max(options, key=lambda o: o["risk_reduction_vs_cash"])
-        for opt in options:
-            reduction = opt["risk_reduction_vs_cash"]
-            badge = '<span class="kb-recommend">추천</span>' if opt is best and reduction > 0 else ""
-            if reduction > 0:
-                reduction_text = f"위험 {reduction:,}원 감소"
-                pill_bg, pill_color = "#FFF3CC", "#8A6800"
-            elif reduction < 0:
-                reduction_text = f"위험 {abs(reduction):,}원 증가"
-                pill_bg, pill_color = "#FDEBEC", "#D93025"
-            else:
-                reduction_text = "현금 기준"
-                pill_bg, pill_color = "#F0F0F0", "#5C5C5C"
-            st.markdown(f"""
-            <div class="kb-card" style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <span style="font-size:14px;font-weight:800;color:#232323;">{opt['label']}</span>{badge}
-                <div style="font-size:12px;color:#8A8A8A;margin-top:5px;">선불 노출액 {opt['prepaid_exposure']:,}원</div>
-              </div>
-              <div style="background:{pill_bg};color:{pill_color};font-size:12px;font-weight:800;
-                          padding:7px 11px;border-radius:9px;white-space:nowrap;">{reduction_text}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown('<div style="margin-top:22px;"></div>', unsafe_allow_html=True)
+        render_eyebrow("💳", "결제수단 비교")
+        st.caption("선불로 묶이는 금액이 클수록 업체가 문제 생겼을 때 못 돌려받을 위험도 커요. (선불 비중은 결제수단 중 최대 노출액 대비 비율)")
+        max_exposure = r["summary"].get("max_prepaid_exposure")
+        safest = min(options, key=lambda o: o["prepaid_exposure"]) if options else None
+        with st.container(border=True):
+            for i, opt in enumerate(options):
+                exposure = opt["prepaid_exposure"]
+                ratio = (exposure / max_exposure) if max_exposure else None
+                badge = '<span class="kb-recommend">추천</span>' if opt is safest else ""
+                if ratio is None:
+                    risk_text, pill_bg, pill_color = "노출 정보 부족", "#F0F0F0", "#8A8A8A"
+                else:
+                    percent = round(ratio * 100)
+                    if ratio >= 0.7:
+                        pill_bg, pill_color = "#FDEBEC", "#D93025"
+                    elif ratio >= 0.3:
+                        pill_bg, pill_color = "#FFF3CC", "#8A6800"
+                    else:
+                        pill_bg, pill_color = "#E8F5E9", "#1E8E3E"
+                    risk_text = f"선불 비중 {percent}%"
+                note_html = (
+                    f'<div style="font-size:11px;color:#B0A272;margin-top:5px;line-height:1.4;">{opt["note"]}</div>'
+                    if opt.get("note") else ""
+                )
+                st.markdown(f"""
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 0;
+                            {"border-top:1px solid #F2F2F2;" if i > 0 else ""}">
+                  <div>
+                    <span style="font-size:13.5px;font-weight:800;color:#232323;">{opt['label']}</span>{badge}
+                    <div style="font-size:11.5px;color:#8A8A8A;margin-top:4px;">선불 노출액 {exposure:,}원</div>
+                    {note_html}
+                  </div>
+                  <div style="background:{pill_bg};color:{pill_color};font-size:11.5px;font-weight:800;
+                              padding:6px 10px;border-radius:9px;white-space:nowrap;flex-shrink:0;margin-left:10px;">{risk_text}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        if CARD_BENEFITS and CARD_BENEFITS.get("cards"):
+            st.markdown('<div style="margin-top:22px;"></div>', unsafe_allow_html=True)
+            card_row_list = []
+            for card in CARD_BENEFITS["cards"]:
+                fb = card["fitness_benefit"]
+                detail_parts = [
+                    f'{fb["eligible_merchant_category"]} 대상',
+                    f'월 {fb["monthly_limit_won"]:,}원 한도({fb["monthly_limit_shared_with"]})',
+                    f'{fb["required_tier"]} 충족 시',
+                ]
+                if fb.get("requires_service_pack"):
+                    detail_parts.append(fb["requires_service_pack"])
+                if fb.get("birthday_month_bonus"):
+                    detail_parts.append(fb["birthday_month_bonus"])
+                detail_text = " · ".join(detail_parts)
+                card_row_list.append(
+                    f'<div style="padding:11px 0;border-top:1px solid #FFE9A8;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                    f'<span style="font-size:12.5px;font-weight:700;color:#232323;">{card["name"]}</span>'
+                    f'<span style="font-size:13px;font-weight:800;color:#8A6800;">'
+                    f'{fb["discount_type"]} {fb["discount_rate_percent"]}%</span>'
+                    f'</div>'
+                    f'<div style="font-size:11px;color:#8A7126;margin-top:4px;line-height:1.5;">{detail_text}</div>'
+                    f'</div>'
+                )
+            card_rows = "".join(card_row_list)
+            header_html = (
+                '<div style="display:flex;align-items:center;gap:7px;">'
+                '<div style="width:26px;height:26px;border-radius:8px;background:#FFBC00;'
+                'display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">💳</div>'
+                '<span style="font-size:13.5px;font-weight:800;color:#232323;">KB국민카드 헬스장 할인 혜택</span>'
+                '</div>'
+            )
+            footer_html = (
+                f'<div style="font-size:10px;color:#B0A272;margin-top:10px;line-height:1.6;">'
+                f'※ {CARD_BENEFITS["source"]["type"]} 기준 (확인일 {CARD_BENEFITS["source"]["verified_date"]}). '
+                f'{CARD_BENEFITS["output_limit"]}<br>{CARD_BENEFITS["disclaimer"]}</div>'
+            )
+            site_button_html = (
+                '<a href="https://card.kbcard.com/CRD/DVIEW/HCAM0101" target="_blank" rel="noopener noreferrer" '
+                'style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;'
+                'padding:10px 0;background:#FFBC00;color:#232323;font-size:12px;font-weight:800;'
+                'border-radius:10px;text-decoration:none;">KB국민카드 사이트에서 카드 자세히 보기 →</a>'
+            )
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,#FFF6DB,#FFFBEF);border:1px solid #FFE9A8;'
+                f'border-radius:16px;padding:16px 18px;">'
+                f'{header_html}{card_rows}{footer_html}{site_button_html}</div>',
+                unsafe_allow_html=True,
+            )
 
     elif step == 5:
         r = st.session_state.get("analyzed") or run_analysis()
-        st.markdown("""
-        <div class="kb-box" style="display:flex;gap:10px;align-items:flex-start;margin-top:0;">
-          <span style="font-size:20px;">💬</span>
-          <div>
-            <div style="font-size:13px;font-weight:800;color:#232323;">이 문장을 그대로 말해보세요</div>
-            <div style="font-size:12px;color:#8A8A8A;margin-top:4px;line-height:1.6;">
-              판정 결과를 바탕으로 준비한 대사예요. 업체에 전화하거나 방문했을 때
-              아래 문구를 읽듯이 활용하시면 돼요.</div>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        render_page_title("💬", "수정 요청 · 확인 질문",
+                           "판정 결과를 바탕으로 준비한 문구예요. 업체에 전화하거나 방문했을 때 그대로 말해보세요.")
 
-        render_section_header("✍️", "수정 요청 문구", "#FFF6DB")
-        st.caption("🗣️ 업체에 이렇게 요청해보세요")
         suggestions = r["suggestions"]
-        if suggestions:
-            for s in suggestions:
-                st.markdown(f"""
-                <div class="kb-bubble" style="background:#FFF9E6;border:1px solid #FFECAD;">
-                  <span style="color:#C9A200;font-weight:900;margin-right:4px;">"</span>{s}
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown(
-                '<div class="kb-box" style="text-align:center;font-size:13px;color:#8A8A8A;">'
-                '특별히 수정 요청할 사항이 없어요</div>', unsafe_allow_html=True,
-            )
+        with st.container(border=True, key="kb_suggest_card"):
+            render_eyebrow("✍️", "수정 요청 문구")
+            if suggestions:
+                render_insight_rows([("💬", "", s, "#C9A200") for s in suggestions])
+            else:
+                st.markdown(
+                    '<div style="text-align:center;font-size:12.5px;color:#8A8A8A;padding:4px 0;">'
+                    '특별히 수정 요청할 사항이 없어요</div>', unsafe_allow_html=True,
+                )
 
-        render_section_header("❓", "확인 질문", "#EAF4FF")
-        st.caption("🗣️ 업체에 이렇게 물어보세요")
+        st.markdown('<div style="margin-top:16px;"></div>', unsafe_allow_html=True)
         questions = r["questions"]
-        if questions:
-            for q in questions:
-                st.markdown(f"""
-                <div class="kb-bubble" style="background:#EAF4FF;border:1px solid #CFE6FB;">
-                  <span style="color:#1A73B8;font-weight:900;margin-right:4px;">"</span>{q}
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown(
-                '<div class="kb-box" style="text-align:center;font-size:13px;color:#8A8A8A;">'
-                '확인할 질문이 없어요</div>', unsafe_allow_html=True,
-            )
+        with st.container(border=True, key="kb_question_card"):
+            render_eyebrow("❓", "확인 질문")
+            if questions:
+                render_insight_rows([("💬", "", q, "#1A73B8") for q in questions])
+                st.markdown(
+                    '<a href="https://fine.fss.or.kr" target="_blank" rel="noopener noreferrer" '
+                    'style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;'
+                    'padding:10px 0;background:#EAF4FF;color:#1A73B8;font-size:12px;font-weight:800;'
+                    'border-radius:10px;text-decoration:none;">금융소비자 정보포털 파인에서 상담·민원 절차 알아보기 →</a>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<div style="text-align:center;font-size:12.5px;color:#8A8A8A;padding:4px 0;">'
+                    '확인할 질문이 없어요</div>', unsafe_allow_html=True,
+                )
 
     elif step == LAST_STEP:
         r = st.session_state.get("analyzed") or run_analysis()
@@ -565,8 +697,7 @@ def render_step_content(step: int):
         )
         st.markdown(
             f'<div style="margin-top:28px;border-top:1px solid #EFEFEF;padding-top:18px;'
-            f'font-size:11px;color:#B0B0B0;line-height:1.7;">{r["disclaimer"]}<br>'
-            f'※ 현재는 골든패스 stub 값입니다. A·B 모듈 연결 후 실제 값으로 교체됩니다.</div>',
+            f'font-size:11px;color:#B0B0B0;line-height:1.7;">{r["disclaimer"]}</div>',
             unsafe_allow_html=True,
         )
 

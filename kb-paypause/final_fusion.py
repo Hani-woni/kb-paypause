@@ -6,6 +6,13 @@ LEVEL_LABELS = {
     "hold": "결제 보류 권고",
 }
 
+# medium 위험조항은 아직 위반이 확정되지 않은 확인 필요 사항이라,
+# 수정 요청이 아니라 업체에 물어볼 확인 질문으로 안내한다.
+QUESTION_TEMPLATES = {
+    "SESSION_DEDUCTION_CHECK": "PT 횟수 차감 기준(노쇼·당일취소 등)을 구체적으로 안내해 주실 수 있을까요?",
+    "CONTRACT_TERMS_NOT_PROVIDED": "환급 규정이 명시된 계약서(서면)를 별도로 받을 수 있을까요?",
+    "GUARANTEE_INSURANCE_NOT_DISCLOSED": "가입하신 보증보험의 보험사·보장 내용·보증기간을 알려주실 수 있을까요?",
+}
 
 def fuse(business_result: dict | None,
          contract_result: dict,
@@ -34,13 +41,18 @@ def fuse(business_result: dict | None,
             "label": o["label"],
             "prepaid_exposure": o["prepaid_exposure"],
             "risk_reduction_vs_cash": o["risk_reduction_vs_cash"],
+            "note": o.get("note"),
         }
         for o in payment_result.get("options", [])
     ]
 
-    suggestions = [f"{r['title']}의 수정을 요청하세요." for r in high_risks]
+    suggestions = [f"「{r['title']}」 부분을 수정해 주실 수 있을까요?" for r in high_risks]
 
-    questions = []
+    questions = [
+        QUESTION_TEMPLATES[r["code"]]
+        for r in medium_risks
+        if r["code"] in QUESTION_TEMPLATES
+    ]
     if contract_data.get("closure_refund_clause") is False:
         questions.append("폐업 시 미사용 이용금액은 어떻게 처리되는지 확인 부탁드립니다.")
 
