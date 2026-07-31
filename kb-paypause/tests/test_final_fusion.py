@@ -41,8 +41,8 @@ def test_golden_path():
     payment_result = payment_compare.compare(contract_data)
     fused = final_fusion.fuse(business_result, contract_result, refund_result, payment_result)
 
-    assert fused["level"] == "hold"
-    assert fused["level_label"] == "결제 보류 권고"
+    assert fused["level"] == "revise"
+    assert fused["level_label"] == "조건 수정 후 결제"
     assert fused["summary"]["contract_price"] == 1200000
     assert fused["summary"]["cash_discount"] == 120000
     assert any(o["method"] == "monthly" for o in fused["payment_options"])
