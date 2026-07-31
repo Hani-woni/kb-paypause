@@ -12,9 +12,9 @@
 
 | 담당 | 역할 | 주요 파일 |
 |---|---|---|
-| **A** | 업체 데이터·상대위험 모델 | `business_lookup.py`, `business_model.py` |
-| **B** | OCR·계약정보 추출·위험조항 분석 | `ocr_parser.py`, `contract_parser.py`, `contract_rules.py` |
-| **C** | 환급액·결제수단 비교·최종판정·웹 통합 | `refund_calculator.py`, `payment_compare.py`, `final_fusion.py`, `app.py` |
+| 김지연 | 업체 데이터·상대위험 모델 | `business_lookup.py`, `business_model.py` |
+| 김서연 | OCR·계약정보 추출·위험조항 분석 | `ocr_parser.py`, `contract_parser.py`, `contract_rules.py` |
+| 한예원 | 환급액·결제수단 비교·최종판정·웹 통합 | `refund_calculator.py`, `payment_compare.py`, `final_fusion.py`, `app.py` |
 | **공통** | 스키마·환경설정 관리 | `schemas.py`, `config.py` |
 
 ## 실행 방법
