@@ -24,8 +24,8 @@ def fuse(business_result: dict | None,
     high_risks = [r for r in risks if r.get("severity") == "high"]
     medium_risks = [r for r in risks if r.get("severity") == "medium"]
 
-    business_risk_level = business_result.get("risk_level") if business_result else None
-    policy_score = _score(len(high_risks), len(medium_risks), business_risk_level, refund_result)
+    policy_score = _score(len(high_risks), len(medium_risks), business_result,
+                          refund_result, contract_data.get("contract_price"))
     final_level = level(policy_score)
 
     summary = {
@@ -71,18 +71,33 @@ def fuse(business_result: dict | None,
     }
 
 
-def _score(high_risk_count: int, medium_risk_count: int, business_risk_level: str | None,
-           refund_result: dict) -> int:
-    """점수가 낮을수록 위험 (0~100). TODO: A·B 실 데이터 연결 후 가중치 조정."""
+def _score(high_risk_count: int, medium_risk_count: int, business_result: dict | None,
+           refund_result: dict, contract_price: int | None) -> int:
+    """점수가 낮을수록 위험 (0~100).
+
+    B(계약 위험조항)는 확정된 위반 개수를 세어 반영하고(3건 이상은 3건으로 캡),
+    A(업체위험)·C(환급불리)는 각자 이미 계산해 둔 연속값(백분위·손해비율)에
+    비례해 반영한다. 두 값을 못 구하는 경우에만 등급/유무 기반 고정값으로 대체한다.
+    """
     score = 100
-    score -= high_risk_count * 30
-    score -= medium_risk_count * 10
-    if business_risk_level in ("caution", "check_required"):
-        score -= 20
+    score -= min(high_risk_count, 3) * 30
+    score -= min(medium_risk_count, 3) * 10
+
+    business_risk_level = business_result.get("risk_level") if business_result else None
+    percentile = business_result.get("relative_risk_percentile") if business_result else None
+    if percentile is not None:
+        score -= (percentile / 100) * 20
+    elif business_risk_level in ("caution", "check_required"):
+        score -= 20  # 백분위를 못 구한 업체는 등급 기반 고정값으로 대체
+
     disadvantage = refund_result.get("expected_disadvantage") or 0
     if disadvantage > 0:
-        score -= 15
-    return max(0, min(100, score))
+        if contract_price:
+            score -= min(disadvantage / contract_price, 1) * 15
+        else:
+            score -= 15  # 계약금액을 모르면 비율을 못 구하므로 고정값으로 대체
+
+    return max(0, min(100, round(score)))
 
 
 def level(policy_score: int) -> str:
