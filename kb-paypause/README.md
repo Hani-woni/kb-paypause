@@ -1,35 +1,47 @@
 # KB PayPause
 
-계약서 이미지 → 위험 분석 → 환급/결제 시뮬레이션 → 결제 판정을 제공하는 3인 팀 프로젝트.
+계약서 PDF·이미지를 분석해 계약위험, 예상 환급액, 결제수단별 선불 노출액, 업체 영업지속 상대위험을 제공하는 금융소비자 보호 서비스입니다.
 
-## 역할 분담 (통합계약서 기준)
+최종 결과는 다음 3단계로 제공합니다.
 
-| 담당 | 역할 | 소유 파일 |
+- `payable`: 결제 가능
+- `revise`: 조건 수정 후 결제
+- `hold`: 결제 보류 권고
+
+## 역할 분담
+
+| 담당 | 역할 | 주요 파일 |
 |---|---|---|
-| **A** | 데이터·모델 | `business_lookup.py`, `business_model.py`, 학습/평가 스크립트, 업체 데이터 |
-| **B** | 계약·계산 | `ocr_parser.py`, `contract_parser.py`, `contract_type.py`, `contract_rules.py`, `rag_service.py`, 기준 문서 |
-| **C** | 웹·통합 | `refund_calculator.py`, `payment_compare.py`, `final_fusion.py`, `app.py` |
-| 공통 | 아무나 못 바꿈 | `schemas.py`, `config.py` |
+| **A** | 업체 데이터·상대위험 모델 | `business_lookup.py`, `business_model.py` |
+| **B** | OCR·계약정보 추출·위험조항 분석 | `ocr_parser.py`, `contract_parser.py`, `contract_rules.py` |
+| **C** | 환급액·결제수단 비교·최종판정·웹 통합 | `refund_calculator.py`, `payment_compare.py`, `final_fusion.py`, `app.py` |
+| **공통** | 스키마·환경설정 관리 | `schemas.py`, `config.py` |
 
-> B = OCR·계약구조화·위험조항·RAG / C = 환급계산·결제비교·최종판정·웹통합
-
-## 실행
+## 실행 방법
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env      # 키 값 채우기 (.env 는 커밋 금지)
-streamlit run app.py      # http://localhost:8501
+streamlit run app.py
+```
+
+접속 주소:
+
+```text
+http://localhost:8501
+```
+
+## 테스트
+
+```bash
+pytest -q
 ```
 
 ## 협업 규칙
 
-- `schemas.py`·`config.py`·함수 시그니처 변경은 **관련 두 사람 이상 동의** 후, 단체방에 변경 전/후·이유·영향 파일 공유.
-- 금액은 원 단위 정수, 비율은 0~100. 미확인값은 0이 아니라 `null`.
-- `.env`, 실계약서, 개인정보, 대용량 모델은 커밋하지 않음 (`.gitignore` 참고).
-- 최종 level 값은 `payable` / `revise` / `hold` 3종 고정.
+- 공통 필드명과 함수 시그니처는 담당자 협의 없이 변경하지 않습니다.
+- 금액은 원 단위 정수, 비율과 백분위는 `0~100`으로 관리합니다.
+- 확인되지 않은 값은 `0`이 아닌 `None` 또는 `null`로 유지합니다.
+- 최종 상태값은 `payable`, `revise`, `hold`로 고정합니다.
+- `.env`, 개인정보, 실계약서 원본은 GitHub에 업로드하지 않습니다.
 
-## 통합 일정
-
-1일차 인터페이스 확정 → 3일차 stub 관통 → 5일차 B 연결 → 7일차 A 연결 → 9일차 C 연결 → 10일차 골든패스 → 11~12일차 시나리오 테스트.
-
-자세한 규약은 `통합계약서` 문서를 참고하세요.
+자세한 모듈 규격과 연동 기준은 저장소의 통합계약서 문서를 참고합니다.
