@@ -66,7 +66,7 @@
 ### 1. 종합 위험 판단
 
 <p align="center">
-  <img src="docs/images/result_overview.png" width="45%" alt="KB PayPause 종합 위험 판단 화면">
+  <img src="kb-paypausedocs/images/result_overview.png" width="45%" alt="KB PayPause 종합 위험 판단 화면">
 </p>
 
 계약서 위험조항, 업체 영업지속 상대위험, 예상 환급 불이익을 종합하여  
@@ -75,7 +75,7 @@
 ### 2. 계약 위험조항 분석
 
 <p align="center">
-  <img src="docs/images/contract_risks.png" width="45%" alt="KB PayPause 계약 위험조항 분석 화면">
+ <img src="kb-paypausedocs/images/contract_risks.png" width="45%" alt="KB PayPause 계약 위험조항 분석 화면">
 </p>
 
 탐지된 위험조항의 심각도와 판단 이유, 계약서 원문을 함께 제공합니다.
@@ -83,7 +83,7 @@
 ### 3. 환급액 및 결제수단 비교
 
 <p align="center">
-  <img src="docs/images/payment_comparison.png" width="45%" alt="KB PayPause 결제수단별 선불 노출액 비교 화면">
+  <img src="kb-paypausedocs/images/payment_comparison.png" width="45%" alt="KB PayPause 결제수단별 선불 노출액 비교 화면">
 </p>
 
 계약서 기준 환급액과 공식 기준 참고 환급액을 비교하고,  
@@ -496,6 +496,20 @@ Windows 가상환경의 Python으로 실행:
 ---
 
 ## 🏦 KB 서비스 연계 방안
+
+### KB국민카드 연계 예시
+
+<p align="center">
+  <img src="kb-paypausedocs/images/kb_card_benefits.png" width="45%" alt="KB국민카드 헬스장 할인 혜택 안내 화면">
+</p>
+
+분석 결과와 결제수단 비교 이후, 사용자가 확인할 수 있는  
+KB국민카드의 관련 혜택과 공식 상품정보를 함께 제공합니다.
+
+카드 혜택은 공식 상품설명서 기준으로 안내하며,  
+실제 적용 조건은 KB국민카드 공식 페이지에서 확인할 수 있도록 연결했습니다.
+
+### KB스타뱅킹
 
 ### KB스타뱅킹
 
