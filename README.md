@@ -59,7 +59,35 @@
                 ↓
        Streamlit 결과 화면
 ```
+---
 
+## 📱 서비스 화면
+
+### 1. 종합 위험 판단
+
+<p align="center">
+  <img src="docs/images/result_overview.png" width="45%" alt="KB PayPause 종합 위험 판단 화면">
+</p>
+
+계약서 위험조항, 업체 영업지속 상대위험, 예상 환급 불이익을 종합하여  
+계약 진행·조건 수정·결제 보류 중 하나의 행동 기준을 제공합니다.
+
+### 2. 계약 위험조항 분석
+
+<p align="center">
+  <img src="docs/images/contract_risks.png" width="45%" alt="KB PayPause 계약 위험조항 분석 화면">
+</p>
+
+탐지된 위험조항의 심각도와 판단 이유, 계약서 원문을 함께 제공합니다.
+
+### 3. 환급액 및 결제수단 비교
+
+<p align="center">
+  <img src="docs/images/payment_comparison.png" width="45%" alt="KB PayPause 결제수단별 선불 노출액 비교 화면">
+</p>
+
+계약서 기준 환급액과 공식 기준 참고 환급액을 비교하고,  
+결제수단별 선불 노출액을 함께 보여줍니다.
 ---
 
 ## 🛠️ 기술 스택
